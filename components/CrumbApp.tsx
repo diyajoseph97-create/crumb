@@ -35,9 +35,11 @@ type AppProps = {
   geminiKey: string | null;
   /** Renders the settings panel (or, in the demo, the "connect" screen). */
   renderSettings: (close: () => void, recipes: Recipe[]) => React.ReactNode;
+  /** Link + caption sent by the "Save to Crumb" bookmark button. */
+  initialAdd?: { url: string; caption: string } | null;
 };
 
-export function CrumbApp({ store, geminiKey, renderSettings }: AppProps) {
+export function CrumbApp({ store, geminiKey, renderSettings, initialAdd }: AppProps) {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -45,6 +47,10 @@ export function CrumbApp({ store, geminiKey, renderSettings }: AppProps) {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [add, setAdd] = useState<{ open: boolean; fill: Recipe | null }>({ open: false, fill: null });
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [prefill, setPrefill] = useState(initialAdd ?? null);
+  useEffect(() => {
+    if (initialAdd) setAdd({ open: true, fill: null });
+  }, [initialAdd]);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const toast = useCallback((text: string, action?: Toast["action"]) => {
@@ -71,7 +77,7 @@ export function CrumbApp({ store, geminiKey, renderSettings }: AppProps) {
       setSettingsOpen(false);
       window.scrollTo({ top: 0 });
     };
-    onHash();
+    setRoute(parseHash());
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, [load]);
@@ -137,6 +143,7 @@ export function CrumbApp({ store, geminiKey, renderSettings }: AppProps) {
         onOpen={(id) => go(`recipe-${id}`)}
         onFavourite={toggleFavourite}
         onAdd={() => setAdd({ open: true, fill: null })}
+        onFill={(r) => setAdd({ open: true, fill: r })}
       />
     );
   } else if (route.page === "new") {
@@ -206,7 +213,12 @@ export function CrumbApp({ store, geminiKey, renderSettings }: AppProps) {
           setAdd((a) => ({ ...a, open: false }));
           setSettingsOpen(true);
         }}
-        onClose={() => setAdd((a) => ({ ...a, open: false }))}
+        initialUrl={prefill?.url}
+        initialCaption={prefill?.caption}
+        onClose={() => {
+          setAdd((a) => ({ ...a, open: false }));
+          setPrefill(null);
+        }}
         onSaved={upsert}
         onOpenRecipe={(id) => go(`recipe-${id}`)}
         onTypeIn={() => {

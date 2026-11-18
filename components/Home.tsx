@@ -4,6 +4,7 @@ import type { Recipe } from "@/lib/types";
 import { MEAL_STYLE, TIME_RANGES } from "@/lib/constants";
 import { activeFilterCount, allIngredients, applyFilters, EMPTY_FILTERS, type Filters } from "@/lib/filter";
 import { displayName } from "@/lib/synonyms";
+import { isSavedForLater } from "@/lib/recipe-utils";
 import { Doodle, Icon, Modal } from "./ui";
 import { FilterPanel } from "./FilterPanel";
 import { RecipeCard } from "./RecipeCard";
@@ -40,10 +41,53 @@ type Props = {
   onOpen: (id: string) => void;
   onFavourite: (r: Recipe) => void;
   onAdd: () => void;
+  onFill: (r: Recipe) => void;
 };
 
-export function Home({ recipes, loading, filters, setFilters, onOpen, onFavourite, onAdd }: Props) {
+function ago(iso: string) {
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  return days <= 0 ? "today" : days === 1 ? "yesterday" : `${days} days ago`;
+}
+
+function Inbox({ items, onFill, onOpen }: { items: Recipe[]; onFill: (r: Recipe) => void; onOpen: (id: string) => void }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <section className="inbox" aria-label="Saved for later">
+      <button className="inbox-head" onClick={() => setOpen(!open)} aria-expanded={open}>
+        <Icon name="link" size={16} />
+        <span className="inbox-title">Saved for later</span>
+        <span className="count-badge">{items.length}</span>
+        <Icon name="down" size={16} className={`inbox-chev ${open ? "up" : ""}`} />
+      </button>
+      {open && (
+        <ul className="inbox-list">
+          {items.map((r) => {
+            const preview = r.originalCaption?.split("\n").find((l) => l.trim())?.slice(0, 90);
+            return (
+              <li key={r.id} className="inbox-item">
+                <button className="inbox-main" onClick={() => onOpen(r.id)}>
+                  <span className="inbox-name">{preview || `Instagram Reel · ${r.sourceShortcode ?? ""}`}</span>
+                  <span className="muted small">Saved {ago(r.createdAt)}{r.originalCaption ? " · caption saved" : ""}</span>
+                </button>
+                <a className="icon-btn" href={r.sourceUrl!} target="_blank" rel="noopener noreferrer" aria-label="Open on Instagram" title="Open on Instagram">
+                  <Icon name="external" size={16} />
+                </a>
+                <button className="btn btn-primary btn-sm" onClick={() => onFill(r)}>
+                  <Icon name="sparkle" size={14} /> Read it
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFavourite, onAdd, onFill }: Props) {
   const [sheet, setSheet] = useState(false);
+  const inbox = useMemo(() => all.filter(isSavedForLater), [all]);
+  const recipes = useMemo(() => all.filter((r) => !isSavedForLater(r)), [all]);
   const cols = useColumns();
   const results = useMemo(() => applyFilters(recipes, filters), [recipes, filters]);
   const ingredients = useMemo(() => allIngredients(recipes), [recipes]);
@@ -142,6 +186,8 @@ export function Home({ recipes, loading, filters, setFilters, onOpen, onFavourit
             </p>
           </div>
 
+          {inbox.length > 0 && <Inbox items={inbox} onFill={onFill} onOpen={onOpen} />}
+
           {chips.length > 0 && (
             <div className="active-chips">
               {chips.map((c) => (
@@ -155,7 +201,7 @@ export function Home({ recipes, loading, filters, setFilters, onOpen, onFavourit
             </div>
           )}
 
-          {!loading && recipes.length === 0 && (
+          {!loading && recipes.length === 0 && inbox.length === 0 && (
             <div className="empty">
               <Doodle name="pot" className="empty-doodle" />
               <h2 className="h-display h-md">Your cookbook is empty</h2>

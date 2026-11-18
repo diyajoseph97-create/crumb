@@ -44,6 +44,11 @@ export function isIncomplete(r: RecipeDraft | Recipe) {
   return m.some((x) => x === "ingredients" || x === "instructions" || x.startsWith("quantities") || x === "name");
 }
 
+/** A link saved with nothing read yet: lives in "Saved for later", not the gallery. */
+export function isSavedForLater(r: Recipe) {
+  return r.ingredients.length === 0 && r.steps.length === 0 && Boolean(r.sourceUrl);
+}
+
 export function timeRangeOf(r: Recipe): string | null {
   const t = totalMinutes(r);
   if (t == null) return null;

@@ -19,7 +19,12 @@ type Props = {
   onOpenRecipe: (id: string) => void;
   onTypeIn: () => void;
   onOpenSettings: () => void;
+  /** Filled in by the "Save to Crumb" bookmark button. */
+  initialUrl?: string;
+  initialCaption?: string;
 };
+
+const IG_LINK = /https?:\/\/(?:www\.)?instagram\.com\/(?:reel|reels|p|tv)\/[A-Za-z0-9_-]+\/?(?:\?[^\s]*)?/i;
 
 const STEPS = ["Sending to Gemini", "Watching & reading", "Picking a photo", "Saving to your cookbook"];
 type Phase = { kind: "form" } | { kind: "working"; step: number } | { kind: "done"; result: ImportResult };
@@ -27,24 +32,60 @@ type Picked = { file: File; preview: string | null };
 
 const MAX_IMAGES = 8;
 
-export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillRecipe, onSaved, onOpenRecipe, onTypeIn, onOpenSettings }: Props) {
+export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillRecipe, onSaved, onOpenRecipe, onTypeIn, onOpenSettings, initialUrl, initialCaption }: Props) {
   const [url, setUrl] = useState("");
   const [files, setFiles] = useState<Picked[]>([]);
   const [caption, setCaption] = useState("");
   const [phase, setPhase] = useState<Phase>({ kind: "form" });
   const [error, setError] = useState<string | null>(null);
   const [help, setHelp] = useState(false);
+  const [fromClipboard, setFromClipboard] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (open) {
-      setPhase({ kind: "form" });
-      setError(null);
-      setUrl("");
-      setFiles([]);
-      setCaption("");
+    if (!open) return;
+    setPhase({ kind: "form" });
+    setError(null);
+    setFiles([]);
+    setFromClipboard(false);
+    setUrl(initialUrl ?? "");
+    setCaption(initialCaption ?? "");
+    // Just copied a Reel link? Fill it in. (The browser may ask permission the first time.)
+    if (!initialUrl && !fillRecipe && navigator.clipboard?.readText) {
+      navigator.clipboard
+        .readText()
+        .then((t) => {
+          const m = t.match(IG_LINK);
+          if (m) {
+            setUrl((cur) => cur || m[0]);
+            setFromClipboard(true);
+          }
+        })
+        .catch(() => {});
     }
-  }, [open]);
+  }, [open, initialUrl, initialCaption, fillRecipe]);
+
+  /** Anything typed or pasted into the box: pull out the Instagram link, keep the rest as caption. */
+  function onSmartText(text: string) {
+    const m = text.match(IG_LINK);
+    if (m && !fillRecipe) {
+      setUrl(m[0]);
+      setFromClipboard(false);
+      text = text.replace(m[0], "").replace(/^\s+/, "");
+    }
+    setCaption(text);
+  }
+
+  function onPaste(e: React.ClipboardEvent) {
+    const pasted = [...e.clipboardData.files].filter((f) => f.type.startsWith("image/") || f.type.startsWith("video/"));
+    if (pasted.length) {
+      e.preventDefault();
+      const dt = new DataTransfer();
+      pasted.forEach((f) => dt.items.add(f));
+      addFiles(dt.files);
+    }
+  }
 
   function addFiles(list: FileList | null) {
     if (!list) return;
@@ -62,9 +103,31 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
     });
   }
 
-  const hasMaterial = files.length > 0 || caption.trim().length > 0;
+  const hasMaterial = files.length > 0 || caption.trim().length > 0 || Boolean(fillRecipe?.originalCaption);
   const code = url.trim() ? instagramShortcode(url) : null;
-  const linkOnly = !fillRecipe && !hasMaterial && !!code;
+
+  /** Keep the link (and caption, if pasted) now; read the recipe later from the inbox. */
+  async function saveForLater() {
+    setError(null);
+    if (!code) return;
+    const existing = recipes.find((r) => r.sourceShortcode === code);
+    if (existing) return setPhase({ kind: "done", result: { status: "duplicate", recipe: existing } });
+    setPhase({ kind: "working", step: 3 });
+    try {
+      const recipe = await store.create({
+        ...emptyDraft(),
+        name: "Recipe from Instagram",
+        sourceUrl: canonicalInstagramUrl(code),
+        sourceShortcode: code,
+        originalCaption: caption.trim() || null,
+        importNotes: "Saved for later. Open it from “Saved for later” to read the recipe.",
+      });
+      onSaved(recipe);
+      setPhase({ kind: "done", result: { status: "later", recipe } });
+    } catch (err) {
+      setPhase({ kind: "done", result: { status: "error", message: (err as Error).message } });
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -80,27 +143,8 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
         return;
       }
     }
-    if (!hasMaterial && !linkOnly) {
-      setError("Add a screen recording, screenshots, or the caption text.");
-      return;
-    }
-
-    // Link only: save it now, fill in later.
-    if (linkOnly) {
-      setPhase({ kind: "working", step: 3 });
-      try {
-        const recipe = await store.create({
-          ...emptyDraft(),
-          name: "Recipe from Instagram",
-          sourceUrl: canonicalInstagramUrl(code!),
-          sourceShortcode: code,
-          importNotes: "Saved as a link only. Add a screen recording or screenshots to fill in the recipe.",
-        });
-        onSaved(recipe);
-        setPhase({ kind: "done", result: { status: "saved", recipe } });
-      } catch (err) {
-        setPhase({ kind: "done", result: { status: "error", message: (err as Error).message } });
-      }
+    if (!hasMaterial) {
+      setError("Paste the caption, or add a screen recording or screenshots.");
       return;
     }
 
@@ -114,7 +158,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
       const result = await readRecipe({
         apiKey: geminiKey,
         files: files.map((f) => f.file),
-        text: caption,
+        text: caption.trim() || fillRecipe?.originalCaption || "",
         existing: fillRecipe ?? undefined,
         onStage: (s) => setPhase({ kind: "working", step: s === "upload" ? 0 : 1 }),
       });
@@ -133,7 +177,8 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
       }
 
       setPhase({ kind: "working", step: 3 });
-      const sources = [video ? "video" : "", files.some((f) => f.file.type.startsWith("image/")) ? "screenshots" : "", caption.trim() ? "caption" : ""].filter(Boolean);
+      const usedCaption = caption.trim() || fillRecipe?.originalCaption;
+      const sources = [video ? "video" : "", files.some((f) => f.file.type.startsWith("image/")) ? "screenshots" : "", usedCaption ? "caption" : ""].filter(Boolean);
       const readFrom = `Read from the ${sources.join(", ").replace(/, ([^,]*)$/, " and $1")}.`;
       const notes = [result.notes, readFrom].filter(Boolean).join(" ");
 
@@ -178,46 +223,52 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
         )}
 
         {phase.kind === "form" && (
-          <form onSubmit={submit} className="col gap-sm">
+          <form
+            onSubmit={submit}
+            className={`col gap-sm ${dragging ? "is-dragging" : ""}`}
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={(e) => { if (e.currentTarget === e.target) setDragging(false); }}
+            onDrop={(e) => { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer.files); }}
+          >
             <div className="add-head">
               <Doodle name="pot" className="add-doodle" />
               <h2 className="h-display h-md">{fillRecipe ? "Fill in the gaps" : "Add a recipe"}</h2>
               <p className="muted">
                 {fillRecipe
-                  ? `Add a screen recording or screenshots of “${fillRecipe.name}”. Crumb fills in what's missing and keeps what you have.`
-                  : "Share the Reel with Crumb and it'll turn it into a tidy recipe card."}
+                  ? `Add a recording, screenshots or the caption of “${fillRecipe.name}”. Crumb fills in what's missing and keeps what you have.`
+                  : "Paste the Reel link and caption, or drop a recording or screenshots. Anything works."}
               </p>
             </div>
 
-            {!fillRecipe && (
-              <label className="field">
-                <span className="field-label">Instagram link</span>
-                <input className="input" type="url" inputMode="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://www.instagram.com/reel/…" />
-              </label>
+            {url && !fillRecipe && (
+              <div className={`link-chip ${code ? "" : "bad"}`}>
+                <Icon name="link" size={16} />
+                <span className="link-chip-text">{code ? `Instagram Reel · ${code}` : url}</span>
+                {fromClipboard && <span className="chip-note">from your clipboard</span>}
+                <button type="button" className="icon-btn sm" onClick={() => { setUrl(""); setFromClipboard(false); }} aria-label="Remove link">
+                  <Icon name="x" size={14} />
+                </button>
+              </div>
             )}
 
-            <div
-              className="dropzone"
-              onClick={() => fileRef.current?.click()}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => { e.preventDefault(); addFiles(e.dataTransfer.files); }}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && fileRef.current?.click()}
-            >
-              {files.length === 0 ? (
-                <>
-                  <Icon name="play" size={28} />
-                  <strong>Add a screen recording or screenshots</strong>
-                  <span className="muted small">A recording works best: Crumb listens to what's said and reads on-screen text.</span>
-                </>
-              ) : (
+            <div className="smartzone">
+              <textarea
+                className="smart-input"
+                rows={files.length ? 3 : 5}
+                value={caption}
+                onChange={(e) => onSmartText(e.target.value)}
+                onPaste={onPaste}
+                placeholder={fillRecipe ? "Paste the caption or recipe text…" : "Paste the Reel link and its caption here…\n\nYou can also paste screenshots, or drop a screen recording anywhere."}
+                aria-label="Paste a link, caption or screenshots"
+                autoFocus
+              />
+              {files.length > 0 && (
                 <div className="shots">
                   {video && (
                     <div className="shot shot-video">
                       <Icon name="play" size={22} />
                       <span>{(video.file.size / 1024 / 1024).toFixed(1)} MB</span>
-                      <button type="button" className="shot-x" aria-label="Remove video" onClick={(e) => { e.stopPropagation(); setFiles((x) => x.filter((f) => f !== video)); }}>
+                      <button type="button" className="shot-x" aria-label="Remove video" onClick={() => setFiles((x) => x.filter((f) => f !== video))}>
                         <Icon name="x" size={12} />
                       </button>
                     </div>
@@ -225,42 +276,52 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
                   {images.map((f, i) => (
                     <div key={i} className="shot">
                       <img src={f.preview!} alt={`Screenshot ${i + 1}`} />
-                      <button type="button" className="shot-x" aria-label="Remove screenshot" onClick={(e) => { e.stopPropagation(); setFiles((x) => x.filter((y) => y !== f)); }}>
+                      <button type="button" className="shot-x" aria-label="Remove screenshot" onClick={() => setFiles((x) => x.filter((y) => y !== f))}>
                         <Icon name="x" size={12} />
                       </button>
                     </div>
                   ))}
-                  {images.length < MAX_IMAGES && <div className="shot shot-add"><Icon name="plus" /></div>}
                 </div>
               )}
+              <div className="smartzone-bar">
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => fileRef.current?.click()}>
+                  <Icon name="play" size={16} /> Add recording or screenshots
+                </button>
+                <button type="button" className="link-btn" onClick={() => setHelp(!help)} aria-expanded={help}>
+                  {help ? "Hide tips" : "Tips"}
+                </button>
+              </div>
+              {dragging && <div className="drop-overlay"><Icon name="plus" size={28} /> Drop to add</div>}
             </div>
             <input ref={fileRef} type="file" accept="image/*,video/*" multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
 
-            <label className="field">
-              <span className="field-label">Caption <span className="muted">(optional, paste it if it has the recipe)</span></span>
-              <textarea className="input" rows={3} value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Paste the post's caption…" />
-            </label>
-
-            <button type="button" className="link-btn help-toggle" onClick={() => setHelp(!help)} aria-expanded={help}>
-              {help ? "Hide tips" : "How do I get these from Instagram?"}
-            </button>
             {help && (
               <ul className="help-list">
-                <li><strong>Link:</strong> on the Reel, tap <em>Share</em> (paper plane) then <em>Copy link</em>.</li>
-                <li><strong>Screen recording:</strong> iPhone: Control Centre → Screen Recording. Android: Quick Settings → Screen record. Let the Reel play with sound on, then stop.</li>
-                <li><strong>Caption:</strong> tap <em>more</em> under the Reel, then press and hold the text to copy it.</li>
+                <li><strong>Fastest:</strong> on instagram.com, click the <em>Save to Crumb</em> button in your bookmarks bar. The link and caption come with it. (Set it up in Settings.)</li>
+                <li><strong>Recipe only in the video?</strong> Screen-record it playing with sound: Mac <kbd>⌘</kbd><kbd>⇧</kbd><kbd>5</kbd>, Windows <kbd>Win</kbd><kbd>Alt</kbd><kbd>R</kbd>. Then drop the file here.</li>
+                <li><strong>No time now?</strong> Paste just the link and choose <em>Save for later</em>.</li>
               </ul>
             )}
 
             {!geminiKey && hasMaterial && (
               <p className="form-note">
-                Reading recordings needs your Gemini key. <button type="button" className="link-btn" onClick={onOpenSettings}>Add it in Settings</button>
+                Reading recipes needs your Gemini key. <button type="button" className="link-btn" onClick={onOpenSettings}>Add it in Settings</button>
               </p>
             )}
             {error && <p className="form-error" role="alert">{error}</p>}
-            <button type="submit" className="btn btn-primary btn-lg block" disabled={!hasMaterial && !linkOnly}>
-              {linkOnly ? <><Icon name="link" size={18} /> Save link for later</> : <><Icon name="sparkle" size={18} /> {fillRecipe ? "Fill in recipe" : "Read recipe"}</>}
-            </button>
+
+            <div className="add-actions">
+              {code && !fillRecipe && (
+                <button type="button" className={`btn ${hasMaterial ? "btn-outline" : "btn-primary"} btn-lg`} onClick={saveForLater}>
+                  <Icon name="link" size={18} /> Save for later
+                </button>
+              )}
+              {(hasMaterial || !code || fillRecipe) && (
+                <button type="submit" className="btn btn-primary btn-lg grow" disabled={!hasMaterial}>
+                  <Icon name="sparkle" size={18} /> {fillRecipe ? "Fill in recipe" : "Read recipe"}
+                </button>
+              )}
+            </div>
 
             {!fillRecipe && (
               <p className="add-alt">
@@ -328,6 +389,18 @@ function Result({ result, filling, onOpen, onClose, onTryAgain }: {
         <div className="row gap-sm center wrap">
           <button className="btn btn-ghost" onClick={onClose}>Close</button>
           <button className="btn btn-primary" onClick={onTryAgain}>Try again</button>
+        </div>
+      </div>
+    );
+  }
+  if (result.status === "later") {
+    return (
+      <div className="result">
+        <div className="result-badge tone-butter pop"><Icon name="link" size={26} /></div>
+        <h2 className="h-display h-md">Saved for later</h2>
+        <p className="muted">It's waiting in <strong>Saved for later</strong> at the top of your cookbook. Open it when you're ready to read the recipe.</p>
+        <div className="row gap-sm center">
+          <button className="btn btn-primary" onClick={onClose}>Done</button>
         </div>
       </div>
     );

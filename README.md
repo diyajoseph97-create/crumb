@@ -25,14 +25,21 @@ You can use the same token on all your devices, or make one per device.
 
 The free tier is plenty for personal use. On the free tier, Google may use requests to improve its products.
 
-## Adding a recipe
-1. In Instagram, tap **Share → Copy link** on the Reel and paste it into Crumb. It's kept for "Watch original video" and for spotting duplicates.
-2. Add a **screen recording** of the Reel (best: Crumb listens to what's said and reads on-screen text), and/or **screenshots**, and/or the **copied caption**.
-3. Tap **Read recipe**.
+**Connecting another device:** in Crumb on a connected device, open **Settings → Add another device**, choose a PIN and create a link or QR code. Open it on the new device and enter the PIN. No copying keys.
+
+## Adding a recipe (laptop)
+
+**Fastest: the Save to Crumb button**
+1. Once: open **Settings → Save from Instagram** and drag the red **Save to Crumb** button to your bookmarks bar (show the bar with ⌘⇧B / Ctrl⇧B).
+2. On instagram.com, open a Reel and click **Save to Crumb**. Crumb opens with the link and caption filled in.
+3. Click **Read recipe**, or **Save for later**.
+
+**Or paste it in.** Click **Add recipe** and paste anything into the box: the Reel link, the caption, screenshots. Crumb sorts out which is which. If you've just copied a Reel link, it's filled in automatically. Drop a screen recording anywhere on the form when the recipe is only spoken or shown in the video (Mac: ⌘⇧5 to record the screen).
+
+**Saved for later.** Links you save without reading wait in **Saved for later** at the top of your cookbook. Click **Read it** when you're ready. If you saved the caption, that's all it needs.
 
 - Ingredients, amounts and steps are never guessed. Anything missing stays blank and the recipe is marked **Needs details**.
 - Times and servings are used if stated; otherwise they're estimated and shown as **~ estimated**.
-- In a hurry? Paste just the link and tap **Save link for later**, then fill it in from the recipe page.
 
 ## Backups
 **Settings → Download a backup** saves every recipe as one JSON file. The `crumb-data` repo also keeps the full history of every change.

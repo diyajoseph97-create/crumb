@@ -57,4 +57,5 @@ export type RecipeDraft = Omit<Recipe, "id" | "createdAt" | "updatedAt">;
 export type ImportResult =
   | { status: "saved"; recipe: Recipe }
   | { status: "duplicate"; recipe: Recipe }
+  | { status: "later"; recipe: Recipe }
   | { status: "error"; message: string };

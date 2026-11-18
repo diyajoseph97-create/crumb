@@ -9,6 +9,14 @@ import { setImageResolver } from "@/components/RecipeImage";
 import { clearSettings, createGitHubStore, loadSettings, saveSettings, type Settings } from "@/lib/github";
 import { DemoStore } from "@/lib/store";
 import type { Recipe } from "@/lib/types";
+import { readAddHash } from "@/lib/bookmarklet";
+
+// Read (and then hide) anything passed in the address: a recipe from the bookmark
+// button (#add=…) or an "Add another device" link (#join=…).
+const startHash = window.location.hash;
+const startAdd = readAddHash(startHash);
+const startJoin = startHash.startsWith("#join=") ? startHash.slice(6) : null;
+if (startAdd || startJoin) history.replaceState(null, "", window.location.pathname + window.location.search);
 
 function downloadBackup(recipes: Recipe[]) {
   const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), count: recipes.length, recipes }, null, 2)], { type: "application/json" });
@@ -22,6 +30,7 @@ function downloadBackup(recipes: Recipe[]) {
 function Root() {
   const [settings, setSettings] = useState<Settings | null>(() => loadSettings());
   const [demo, setDemo] = useState(false);
+  const [pendingAdd] = useState(startAdd);
 
   const store = useMemo(() => {
     if (!settings) return null;
@@ -34,7 +43,6 @@ function Root() {
     saveSettings(s);
     setDemo(false);
     setSettings(s);
-    window.location.hash = "";
   };
 
   if (store && settings) {
@@ -43,6 +51,7 @@ function Root() {
         key={`${settings.owner}/${settings.repo}`}
         store={store}
         geminiKey={settings.geminiKey || null}
+        initialAdd={pendingAdd}
         renderSettings={(close, recipes) => (
           <Setup
             inApp
@@ -73,7 +82,7 @@ function Root() {
     );
   }
 
-  return <Setup onConnect={connect} onDemo={() => setDemo(true)} />;
+  return <Setup joinPayload={startJoin} onConnect={connect} onDemo={() => setDemo(true)} />;
 }
 
 createRoot(document.getElementById("root")!).render(<Root />);

@@ -7,7 +7,8 @@ import { canonicalInstagramUrl, emptyDraft, instagramShortcode } from "@/lib/rec
 import { Home } from "./Home";
 import { RecipeDetail } from "./RecipeDetail";
 import { RecipeEditor } from "./RecipeEditor";
-import { AddRecipeModal } from "./AddRecipeModal";
+import { AddRecipeModal, IG_LINK } from "./AddRecipeModal";
+import { takeShared } from "@/lib/share";
 import { Doodle, Icon, Modal } from "./ui";
 import { BlobButton, CircleBadge } from "./Stickers";
 
@@ -46,7 +47,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
   const [loadError, setLoadError] = useState<string | null>(null);
   const [route, setRoute] = useState<Route>({ page: "home" });
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
-  const [add, setAdd] = useState<{ open: boolean; fill: Recipe | null }>({ open: false, fill: null });
+  const [add, setAdd] = useState<{ open: boolean; fill: Recipe | null; shared?: { url: string; caption: string; files: File[] } | null }>({ open: false, fill: null });
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -67,18 +68,40 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
       .finally(() => setLoading(false));
   }, [store]);
 
+  // Opened from the phone's share menu (Instagram → Share → Crumb).
+  const pickUpShare = useCallback(async () => {
+    if (window.location.hash !== "#shared") return false;
+    history.replaceState(null, "", window.location.pathname + window.location.search);
+    setRoute({ page: "home" });
+    const s = await takeShared();
+    if (!s) return true;
+    const all = [s.url, s.text, s.title].filter(Boolean).join("\n");
+    const link = all.match(IG_LINK)?.[0] || "";
+    const caption = (s.text || "").replace(link, "").trim();
+    setPendingShare({ url: link, caption, files: s.files });
+    return true;
+  }, []);
+
+  const [pendingShare, setPendingShare] = useState<{ url: string; caption: string; files: File[] } | null>(null);
+  useEffect(() => {
+    if (!pendingShare || loading) return; // wait for the cookbook so duplicates are caught
+    setAdd({ open: true, fill: null, shared: pendingShare });
+    setPendingShare(null);
+  }, [pendingShare, loading]);
+
   useEffect(() => {
     load();
     const onHash = () => {
+      if (window.location.hash === "#shared") return void pickUpShare();
       setRoute(parseHash());
       setAdd((a) => (a.open ? { ...a, open: false } : a)); // close any open dialog on navigation
       setSettingsOpen(false);
       window.scrollTo({ top: 0 });
     };
-    setRoute(parseHash());
+    pickUpShare().then((handled) => !handled && setRoute(parseHash()));
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
-  }, [load]);
+  }, [load, pickUpShare]);
 
   useEffect(() => {
     if (reloadToken) load();
@@ -144,8 +167,8 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
         setFilters={setFilters}
         onOpen={(id) => go(`recipe-${id}`)}
         onFavourite={toggleFavourite}
-        onAdd={() => setAdd({ open: true, fill: null })}
-        onFill={(r) => setAdd({ open: true, fill: r })}
+        onAdd={() => setAdd({ open: true, fill: null, shared: null })}
+        onFill={(r) => setAdd({ open: true, fill: r, shared: null })}
       />
     );
   } else if (route.page === "new") {
@@ -173,7 +196,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
         onEdit={() => go(`edit-${current.id}`)}
         onDelete={() => remove(current)}
         onFavourite={() => toggleFavourite(current)}
-        onAddScreenshots={() => setAdd({ open: true, fill: current })}
+        onAddScreenshots={() => setAdd({ open: true, fill: current, shared: null })}
         onSetLink={async (url) => {
           const code = instagramShortcode(url);
           if (!code) return "That doesn't look like an Instagram Reel link. It should look like instagram.com/reel/…";
@@ -206,7 +229,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
             className="add-btn"
             text="ADD A RECIPE · ADD A RECIPE · "
             center={<Icon name="plus" size={26} />}
-            onClick={() => setAdd({ open: true, fill: null })}
+            onClick={() => setAdd({ open: true, fill: null, shared: null })}
             aria-label="Add recipe"
           />
           <BlobButton
@@ -230,6 +253,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
       <AddRecipeModal
         open={add.open}
         fillRecipe={add.fill}
+        shared={add.shared ?? null}
         store={store}
         recipes={recipes}
         geminiKey={geminiKey}

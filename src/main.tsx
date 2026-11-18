@@ -5,6 +5,7 @@ import { createRoot } from "react-dom/client";
 import { CrumbApp } from "@/components/CrumbApp";
 import { SettingsPanel, Welcome } from "@/components/Setup";
 import { getGeminiKey, LocalStore, requestPersistence } from "@/lib/local-store";
+import { registerServiceWorker } from "@/lib/share";
 
 const WELCOMED = "crumb-welcomed";
 
@@ -47,4 +48,5 @@ function Root() {
 }
 
 requestPersistence();
+registerServiceWorker();
 createRoot(document.getElementById("root")!).render(<Root />);

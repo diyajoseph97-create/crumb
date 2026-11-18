@@ -1,5 +1,6 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { canInstall, isInstalled, onInstallChange, promptInstall } from "@/lib/share";
 import { downloadBackup, getGeminiKey, restoreBackup, setGeminiKey } from "@/lib/local-store";
 import { Doodle, Icon, Logo } from "./ui";
 
@@ -101,10 +102,43 @@ export function SettingsPanel({ onClose, onRestored, onKeyChange }: { onClose: (
         </div>
       </section>
 
+      <InstallSection />
+
       {msg && <p className={msg.bad ? "form-error" : "form-ok"} role="status">{msg.text}</p>}
       <div className="settings-extra">
         <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
       </div>
     </div>
+  );
+}
+
+/** "Share to Crumb" from Instagram needs Crumb installed as an app (Android + Chrome). */
+function InstallSection() {
+  const [, force] = useState(0);
+  useEffect(() => {
+    const off = onInstallChange(() => force((n) => n + 1));
+    return () => { off(); };
+  }, []);
+  const installed = isInstalled();
+  return (
+    <section className="settings-section">
+      <h3 className="settings-h">Share from Instagram (Android)</h3>
+      {installed ? (
+        <p className="muted small">Crumb is installed. In Instagram, tap <strong>Share</strong> on a Reel, then pick <strong>Crumb</strong>. A link goes to <em>Saved for later</em>; a downloaded video from your gallery is read straight away.</p>
+      ) : (
+        <>
+          <p className="muted small">
+            Install Crumb on your Android phone and it appears in the share menu. Open this page in <strong>Chrome</strong> on the phone, then tap{" "}
+            {canInstall() ? "the button below" : <>the <strong>⋮</strong> menu → <strong>Install app</strong> (or <strong>Add to home screen</strong>)</>}.
+            The phone keeps its own cookbook, separate from your laptop. Use Backup to move recipes across.
+          </p>
+          {canInstall() && (
+            <button className="btn btn-primary btn-sm" onClick={() => promptInstall()}>
+              <Icon name="down" size={16} /> Install Crumb
+            </button>
+          )}
+        </>
+      )}
+    </section>
   );
 }

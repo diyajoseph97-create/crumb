@@ -19,9 +19,11 @@ type Props = {
   onOpenRecipe: (id: string) => void;
   onTypeIn: () => void;
   onOpenSettings: () => void;
+  /** Something shared from the phone's share menu: prefill, then read it (video) or save it for later (link only). */
+  shared?: { url: string; caption: string; files: File[] } | null;
 };
 
-const IG_LINK = /https?:\/\/(?:www\.)?instagram\.com\/(?:reel|reels|p|tv)\/[A-Za-z0-9_-]+\/?(?:\?[^\s]*)?/i;
+export const IG_LINK = /https?:\/\/(?:www\.)?instagram\.com\/(?:reel|reels|p|tv)\/[A-Za-z0-9_-]+\/?(?:\?[^\s]*)?/i;
 
 const STEPS = ["Sending to Gemini", "Watching & reading", "Picking a photo", "Saving to your cookbook"];
 type Phase = { kind: "form" } | { kind: "working"; step: number } | { kind: "done"; result: ImportResult };
@@ -29,7 +31,7 @@ type Picked = { file: File; preview: string | null };
 
 const MAX_IMAGES = 8;
 
-export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillRecipe, onSaved, onOpenRecipe, onTypeIn, onOpenSettings }: Props) {
+export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillRecipe, onSaved, onOpenRecipe, onTypeIn, onOpenSettings, shared }: Props) {
   const [url, setUrl] = useState("");
   const [files, setFiles] = useState<Picked[]>([]);
   const [caption, setCaption] = useState("");
@@ -40,14 +42,40 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const [auto, setAuto] = useState<"read" | "later" | null>(null);
+
   useEffect(() => {
     if (!open) return;
     setPhase({ kind: "form" });
     setError(null);
     setFiles([]);
-    setUrl("");
-    setCaption("");
-  }, [open]);
+    setUrl(shared?.url || "");
+    setCaption(shared?.caption || "");
+    setAuto(null);
+    if (shared) {
+      if (shared.files.length) {
+        const dt = new DataTransfer();
+        shared.files.forEach((f) => dt.items.add(f));
+        addFiles(dt.files);
+        if (geminiKey) setAuto("read");
+        else setError("To read recipes automatically, add your Gemini key in Settings first.");
+      } else if (shared.url && instagramShortcode(shared.url)) {
+        setAuto("later");
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, shared]);
+
+  // Shared from the phone: start straight away once the form is filled in.
+  useEffect(() => {
+    if (!auto) return;
+    if (auto === "read" && files.length === 0) return;
+    const run = auto;
+    setAuto(null);
+    if (run === "read") submit();
+    else saveForLater();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auto, files, url]);
 
   /** Anything typed or pasted into the box: pull out the Instagram link, keep the rest as caption. */
   function onSmartText(text: string) {
@@ -111,8 +139,8 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
     }
   }
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  async function submit(e?: React.FormEvent) {
+    e?.preventDefault();
     setError(null);
     if (url.trim() && !code) {
       setError("That doesn't look like an Instagram Reel or post link. It should look like instagram.com/reel/…");

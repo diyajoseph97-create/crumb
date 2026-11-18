@@ -21,13 +21,15 @@ const result = await build({
 });
 const js = result.outputFiles[0].text.replace(/<\/script/gi, "<\\/script");
 const css = readFileSync(resolve(root, "styles/globals.css"), "utf8");
-const icon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#c9331f"/><circle cx="22" cy="40" r="8" fill="#ffd45c"/><circle cx="40" cy="26" r="10" fill="#fff8ee"/><circle cx="44" cy="46" r="5" fill="#f58a1f"/></svg>`;
+const icon = readFileSync(resolve(root, "public/icons/icon.svg"), "utf8");
 const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="theme-color" content="#fff8ee" />
+<meta name="theme-color" content="#fdf6ec" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
 <meta name="robots" content="noindex, nofollow" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="Crumb" />
@@ -45,5 +47,6 @@ mkdirSync(resolve(root, "docs"), { recursive: true });
 writeFileSync(resolve(root, "docs/index.html"), html);
 writeFileSync(resolve(root, "docs/.nojekyll"), "");
 cpSync(resolve(root, "fonts"), resolve(root, "docs/fonts"), { recursive: true });
+cpSync(resolve(root, "public"), resolve(root, "docs"), { recursive: true });
 writeFileSync(resolve(root, "docs/robots.txt"), "User-agent: *\nDisallow: /\n");
 console.log("Built docs/index.html", Math.round(html.length / 1024) + " KB");

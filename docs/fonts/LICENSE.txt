@@ -1,4 +1,4 @@
-Fonts: VT323, Libre Caslon Text, Instrument Sans — all SIL Open Font License 1.1 (via @fontsource).
+Fonts: VT323, Libre Caslon Text, Instrument Sans, Barlow Condensed, Courier Prime, Caveat — all SIL Open Font License 1.1 (via @fontsource).
 
 Copyright 2022 The Instrument Sans Project Authors (https://github.com/Instrument/instrument-sans) InstrumentSans-Italic[wdth,wght].ttf: Copyright 2022 The Instrument Sans Project Authors (https://github.com/Instrument/instrument-sans)
 

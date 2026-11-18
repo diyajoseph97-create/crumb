@@ -84,3 +84,34 @@ export async function runImport(job: ImportInput, deps: { apiKey: string; store:
   };
   return store.create(draft);
 }
+
+// ---------- Saved jobs ----------
+// Recipes being added are saved on the device (videos included), so if the phone
+// closes Crumb in the background, they carry on the next time it opens.
+const JOB_DB = "crumb-jobs";
+const JOB_STORE = "jobs";
+function jobDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(JOB_DB, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(JOB_STORE, { keyPath: "id" });
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function jobTx(mode: IDBTransactionMode, run: (s: IDBObjectStore) => IDBRequest | void): Promise<any> {
+  const d = await jobDb();
+  return new Promise((resolve, reject) => {
+    const t = d.transaction(JOB_STORE, mode);
+    const req = run(t.objectStore(JOB_STORE));
+    t.oncomplete = () => resolve(req ? req.result : undefined);
+    t.onerror = () => reject(t.error);
+  });
+}
+export const saveJob = (job: ImportJob) => jobTx("readwrite", (s) => s.put(job)).catch(() => {});
+export const forgetJob = (id: string) => jobTx("readwrite", (s) => s.delete(id)).catch(() => {});
+export async function savedJobs(): Promise<ImportJob[]> {
+  const all = ((await jobTx("readonly", (s) => s.getAll()).catch(() => [])) || []) as ImportJob[];
+  return all
+    .map((j) => ({ ...j, files: (j.files || []).map((f: Blob | File) => (f instanceof File ? f : new File([f], "video", { type: f.type }))) }))
+    .sort((a, b) => b.startedAt - a.startedAt);
+}

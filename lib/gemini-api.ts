@@ -38,6 +38,8 @@ export async function generateContent(
 ): Promise<string> {
   const res = await call(apiKey, `/v1beta/models/${model}:generateContent`, {
     method: "POST",
+    // Long YouTube videos can take a while, but never wait forever.
+    signal: typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(4 * 60_000) : undefined,
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       contents: [{ role: "user", parts: body.parts }],

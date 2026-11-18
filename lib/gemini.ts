@@ -167,6 +167,8 @@ function friendlyError(e: unknown): Error {
   if (/\b(503|500)\b|UNAVAILABLE|overloaded|high demand/i.test(msg)) return new Error("Busy right now. Try again in a minute.");
   if (/youtube|Cannot fetch content|video is (private|unavailable)|file_uri|fileUri|INVALID_ARGUMENT.*(uri|url)/i.test(msg))
     return new Error("This YouTube video can't be opened. It needs to be public (not private, unlisted or age-restricted).");
+  if (/TimeoutError|timed out|signal timed out|aborted/i.test(msg) || (e instanceof DOMException && (e.name === "TimeoutError" || e.name === "AbortError")))
+    return new Error("This one took too long to read. Try again (long videos can be slow).");
   if (/fetch|network/i.test(msg)) return new Error("No internet connection. Try again when you're back online.");
   if (/couldn't be processed/i.test(msg)) return new Error("That video couldn't be opened. Try another copy of it.");
   return new Error(`Couldn't read this (${msg.slice(0, 120)}).`);

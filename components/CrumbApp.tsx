@@ -10,7 +10,7 @@ import { AddRecipeModal, IG_LINK } from "./AddRecipeModal";
 import { takeShared } from "@/lib/share";
 import { compactPhoto } from "@/lib/image";
 import { onRemoteChanges, onSyncStatus, getSyncStatus, type SyncStatus } from "@/lib/sync";
-import { newJob, runImport, type ImportInput, type ImportJob } from "@/lib/importer";
+import { forgetJob, newJob, runImport, saveJob, savedJobs, type ImportInput, type ImportJob } from "@/lib/importer";
 import { isSavedForLater, isYouTube } from "@/lib/recipe-utils";
 import { Doodle, Icon, Modal } from "./ui";
 import { BlobButton, CircleBadge } from "./Stickers";
@@ -196,15 +196,18 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
     async (job: ImportJob) => {
       if (!geminiKey) return;
       setJobs((js) => js.map((j) => (j.id === job.id ? { ...j, status: "adding", error: undefined } : j)));
+      saveJob({ ...job, status: "adding", error: undefined });
       const existing = job.fillId ? recipesRef.current.find((r) => r.id === job.fillId) ?? null : null;
       try {
         const recipe = await runImport(job, { apiKey: geminiKey, store, existing });
         setJobs((js) => js.filter((j) => j.id !== job.id));
+        forgetJob(job.id);
         upsert(recipe);
         toast(existing ? `“${recipe.name}” is all filled in!` : "One more recipe safely tucked away!", { label: "View recipe", run: () => go(`recipe-${recipe.id}`) });
       } catch (e) {
         const message = e instanceof Error ? e.message : "Something went wrong.";
         setJobs((js) => js.map((j) => (j.id === job.id ? { ...j, status: "failed", error: message } : j)));
+        saveJob({ ...job, status: "failed", error: message });
         toast(existing ? "Couldn't fill in that recipe" : "Couldn't add a recipe. See the card for details.");
       }
     },
@@ -216,6 +219,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
     (input: ImportInput) => {
       const job = newJob(input);
       setJobs((js) => [job, ...js]);
+      saveJob(job);
       if (!input.fillId) go(""); // show it arriving in the cookbook
       runJob(job);
     },
@@ -229,6 +233,21 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
       toast(`Reading “${r.name}” in the background…`);
     } else setAdd({ open: true, fill: r, shared: null });
   };
+
+  // Carry on with recipes that were still being added when Crumb was last closed.
+  const resumed = useRef(false);
+  useEffect(() => {
+    if (loading || resumed.current) return;
+    resumed.current = true;
+    savedJobs().then((saved) => {
+      if (!saved.length) return;
+      setJobs((js) => [...js, ...saved.filter((s) => !js.some((j) => j.id === s.id))]);
+      (async () => {
+        for (const j of saved) if (j.status === "adding") await runJob(j); // one at a time
+      })();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   // Don't lose recipes that are still being added.
   useEffect(() => {
@@ -295,7 +314,10 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
         onAdd={() => setAdd({ open: true, fill: null, shared: null })}
         jobs={jobs.filter((j) => !j.fillId)}
         onRetryJob={(j) => runJob(j)}
-        onDismissJob={(j) => setJobs((js) => js.filter((x) => x.id !== j.id))}
+        onDismissJob={(j) => {
+          setJobs((js) => js.filter((x) => x.id !== j.id));
+          forgetJob(j.id);
+        }}
         onFill={fillFrom}
       />
     );

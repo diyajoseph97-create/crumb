@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { canInstall, isInstalled, onInstallChange, promptInstall } from "@/lib/share";
+import { canInstall, isInstalled, lastShareReceipt, onInstallChange, promptInstall, type ShareReceipt } from "@/lib/share";
 import { downloadBackup, getGeminiKey, restoreBackup, setGeminiKey } from "@/lib/local-store";
 import { Doodle, Icon, Logo } from "./ui";
 
@@ -120,6 +120,10 @@ function InstallSection() {
     return () => { off(); };
   }, []);
   const installed = isInstalled();
+  const [last, setLast] = useState<ShareReceipt | null>(null);
+  useEffect(() => {
+    lastShareReceipt().then(setLast);
+  }, []);
   return (
     <section className="settings-section">
       <h3 className="settings-h">Share from Instagram (Android)</h3>
@@ -139,6 +143,14 @@ function InstallSection() {
           )}
         </>
       )}
+      <p className="muted small" style={{ marginTop: 10 }}>
+        <strong>Last share received:</strong>{" "}
+        {!last
+          ? "nothing yet."
+          : last.error
+            ? `${new Date(last.at).toLocaleString()}, but it couldn't be read (${last.error}).`
+            : `${new Date(last.at).toLocaleString()}: ${[last.title, last.text, last.url].filter(Boolean).join(" · ") || "(no text)"}${last.fileCount ? ` + ${last.fileCount} file(s) (${(last.fileTypes || []).join(", ")})` : ""}`}
+      </p>
     </section>
   );
 }

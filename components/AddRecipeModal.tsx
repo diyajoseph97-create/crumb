@@ -23,7 +23,7 @@ type Props = {
   shared?: { url: string; caption: string; files: File[] } | null;
 };
 
-export const IG_LINK = /https?:\/\/(?:www\.)?instagram\.com\/(?:reel|reels|p|tv)\/[A-Za-z0-9_-]+\/?(?:\?[^\s]*)?/i;
+export const IG_LINK = /https?:\/\/(?:www\.|m\.)?(?:instagram\.com|instagr\.am)\/(?:share\/)?(?:(?:reel|reels|p|tv)\/)?[A-Za-z0-9_-]{5,}\/?(?:\?[^\s]*)?/i;
 
 const STEPS = ["Sending to Gemini", "Watching & reading", "Picking a photo", "Saving to your cookbook"];
 type Phase = { kind: "form" } | { kind: "working"; step: number } | { kind: "done"; result: ImportResult };

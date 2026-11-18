@@ -74,13 +74,17 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
     history.replaceState(null, "", window.location.pathname + window.location.search);
     setRoute({ page: "home" });
     const s = await takeShared();
-    if (!s) return true;
+    if (!s) {
+      toast("Crumb opened from Share, but nothing came through. Settings → Share from Instagram shows what arrived.");
+      return true;
+    }
     const all = [s.url, s.text, s.title].filter(Boolean).join("\n");
     const link = all.match(IG_LINK)?.[0] || "";
     const caption = (s.text || "").replace(link, "").trim();
+    if (!link && !s.files.length) toast("Got it, but couldn't spot a Reel link in what Instagram sent. Check the Add screen.");
     setPendingShare({ url: link, caption, files: s.files });
     return true;
-  }, []);
+  }, [toast]);
 
   const [pendingShare, setPendingShare] = useState<{ url: string; caption: string; files: File[] } | null>(null);
   useEffect(() => {

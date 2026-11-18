@@ -60,6 +60,10 @@ export function instagramShortcode(url: string): string | null {
   try {
     const u = new URL(url.trim());
     if (!/(^|\.)instagram\.com$/i.test(u.hostname) && !/(^|\.)instagr\.am$/i.test(u.hostname)) return null;
+    // Newer app share links: instagram.com/share/reel/BAxyz… or instagram.com/share/BAxyz…
+    // They redirect to the Reel; we keep the share path as the key.
+    const share = u.pathname.match(/^\/share\/(?:(reel|reels|p|tv)\/)?([A-Za-z0-9_-]+)/i);
+    if (share) return `share/${share[1] ? "reel/" : ""}${share[2]}`;
     const m = u.pathname.match(/\/(?:reel|reels|p|tv)\/([A-Za-z0-9_-]+)/);
     return m ? m[1] : null;
   } catch {
@@ -68,6 +72,7 @@ export function instagramShortcode(url: string): string | null {
 }
 
 export function canonicalInstagramUrl(shortcode: string) {
+  if (shortcode.startsWith("share/")) return `https://www.instagram.com/${shortcode}/`;
   return `https://www.instagram.com/reel/${shortcode}/`;
 }
 

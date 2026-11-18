@@ -74,3 +74,23 @@ export async function promptInstall() {
 }
 export const isInstalled = () =>
   typeof window !== "undefined" && (window.matchMedia?.("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone === true);
+
+export type ShareReceipt = { title?: string; text?: string; url?: string; fileCount?: number; fileTypes?: string[]; error?: string; at: number };
+
+/** The last thing the share menu sent (kept for troubleshooting). */
+export function lastShareReceipt(): Promise<ShareReceipt | null> {
+  return new Promise((resolve) => {
+    try {
+      const open = indexedDB.open(DB, 1);
+      open.onupgradeneeded = () => open.result.createObjectStore(STORE);
+      open.onerror = () => resolve(null);
+      open.onsuccess = () => {
+        const get = open.result.transaction(STORE, "readonly").objectStore(STORE).get("last");
+        get.onsuccess = () => resolve((get.result as ShareReceipt) || null);
+        get.onerror = () => resolve(null);
+      };
+    } catch {
+      resolve(null);
+    }
+  });
+}

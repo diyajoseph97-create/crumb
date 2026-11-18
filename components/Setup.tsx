@@ -7,7 +7,7 @@ function KeyField({ value, onChange }: { value: string; onChange: (v: string) =>
   return (
     <label className="field">
       <span className="field-label">Gemini API key</span>
-      <input className="input" type="password" value={value} onChange={(e) => onChange(e.target.value)} placeholder="AIza…" autoComplete="off" spellCheck={false} />
+      <input className="input" type="password" value={value} onChange={(e) => onChange(e.target.value)} placeholder="AQ.…" autoComplete="off" spellCheck={false} />
       <span className="hint">
         Free from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">aistudio.google.com/apikey</a>: sign in, then click <em>Create API key</em> and copy it.
       </span>
@@ -15,7 +15,8 @@ function KeyField({ value, onChange }: { value: string; onChange: (v: string) =>
   );
 }
 
-const looksLikeKey = (k: string) => /^AIza[\w-]{20,}$/.test(k.trim());
+// Google AI Studio now issues "AQ." keys; older keys start with "AIza". Both work.
+const looksLikeKey = (k: string) => /^(AQ\.[\w.-]{20,}|AIza[\w-]{20,})$/.test(k.trim());
 
 /** First visit: just the Gemini key (or skip). */
 export function Welcome({ onDone }: { onDone: () => void }) {
@@ -23,7 +24,7 @@ export function Welcome({ onDone }: { onDone: () => void }) {
   const [error, setError] = useState<string | null>(null);
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!looksLikeKey(key)) return setError("That doesn't look like a Gemini key. They start with “AIza”.");
+    if (!looksLikeKey(key)) return setError("That doesn't look like a Gemini key. They start with “AQ.” (or “AIza” for older keys).");
     setGeminiKey(key.trim());
     onDone();
   }
@@ -58,7 +59,7 @@ export function SettingsPanel({ onClose, onRestored, onKeyChange }: { onClose: (
 
   function saveKey(e: React.FormEvent) {
     e.preventDefault();
-    if (key.trim() && !looksLikeKey(key)) return setMsg({ text: "That doesn't look like a Gemini key. They start with “AIza”.", bad: true });
+    if (key.trim() && !looksLikeKey(key)) return setMsg({ text: "That doesn't look like a Gemini key. They start with “AQ.” (or “AIza” for older keys).", bad: true });
     setGeminiKey(key.trim());
     onKeyChange(key.trim());
     setMsg({ text: key.trim() ? "Key saved." : "Key removed." });

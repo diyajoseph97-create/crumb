@@ -10,7 +10,7 @@ A personal digital cookbook. Drop in a downloaded Instagram Reel and Crumb turns
 - **AI:** Gemini reads the video (what's said and on-screen text), plus any screenshots or caption, and fills in the recipe.
 
 ## Setup (once)
-Open Crumb and paste a free **Gemini API key**: go to **aistudio.google.com/apikey**, sign in, then **Create API key**. That's all. You can also skip it and type recipes in yourself.
+Open Crumb and paste a free **Gemini API key**: go to **aistudio.google.com/apikey**, sign in, then **Create API key**. New keys start with `AQ.` (older ones with `AIza`); both work. You can also skip it and type recipes in yourself.
 
 On the free tier, Google may use requests to improve its products.
 

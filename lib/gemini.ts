@@ -74,7 +74,8 @@ export type ReadResult = { draft: Partial<RecipeDraft>; isRecipe: boolean; notes
 
 function friendlyError(e: unknown): Error {
   const msg = e instanceof Error ? e.message : String(e);
-  if (/API key not valid|API_KEY_INVALID|permission/i.test(msg)) return new Error("Gemini didn't accept your API key. Check it in Settings.");
+  if (/API key not valid|API_KEY_INVALID|permission|UNAUTHENTICATED|ACCESS_TOKEN_TYPE_UNSUPPORTED|invalid authentication|\b401\b/i.test(msg))
+    return new Error("Gemini didn't accept your API key. Check it in Settings, or create a fresh key in AI Studio and paste that.");
   if (/quota|429|RESOURCE_EXHAUSTED/i.test(msg)) return new Error("Gemini's free limit was reached for now. Try again in a minute.");
   if (/fetch|network/i.test(msg)) return new Error("Couldn't reach Gemini. Check your internet connection.");
   return new Error(`Gemini couldn't read this (${msg.slice(0, 140)}).`);

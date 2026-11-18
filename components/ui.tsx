@@ -119,7 +119,7 @@ export function ToggleChip({
       className={`tchip tone-${tone} ${on ? "on" : ""} ${suggested ? "suggested" : ""}`}
       aria-pressed={on}
       onClick={onClick}
-      title={suggested ? "Suggested by AI. Tap to confirm." : undefined}
+      title={suggested ? "Suggested. Tap to confirm." : undefined}
     >
       {on && <Icon name="check" size={14} />}
       {label}

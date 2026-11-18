@@ -13,7 +13,8 @@ import { TableScene } from "./Porcelain";
 import { Dropdown } from "./Dropdown";
 import { Marquee } from "./Stickers";
 import { FilterPanel } from "./FilterPanel";
-import { RecipeCard } from "./RecipeCard";
+import { JobCard, RecipeCard } from "./RecipeCard";
+import type { ImportJob } from "@/lib/importer";
 
 function greeting() {
   const h = new Date().getHours();
@@ -46,6 +47,9 @@ type Props = {
   onFavourite: (r: Recipe) => void;
   onAdd: () => void;
   onFill: (r: Recipe) => void;
+  jobs?: ImportJob[];
+  onRetryJob?: (j: ImportJob) => void;
+  onDismissJob?: (j: ImportJob) => void;
 };
 
 function ago(iso: string) {
@@ -87,7 +91,7 @@ function Inbox({ items, onFill, onOpen }: { items: Recipe[]; onFill: (r: Recipe)
   );
 }
 
-export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFavourite, onAdd, onFill }: Props) {
+export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFavourite, onAdd, onFill, jobs = [], onRetryJob, onDismissJob }: Props) {
   const [sheet, setSheet] = useState(false);
   const inbox = useMemo(() => all.filter(isSavedForLater), [all]);
   const recipes = useMemo(() => all.filter((r) => !isSavedForLater(r)), [all]);
@@ -100,11 +104,14 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
   const clearAll = () => setFilters({ ...EMPTY_FILTERS, query: filters.query });
 
   // Round-robin into columns keeps newest-first order reading left to right.
+  // Recipes still being added come first, then the cookbook.
+  type Item = { job: ImportJob } | { recipe: Recipe };
   const columns = useMemo(() => {
-    const c: Recipe[][] = Array.from({ length: cols }, () => []);
-    results.forEach((r, i) => c[i % cols].push(r));
+    const c: Item[][] = Array.from({ length: cols }, () => []);
+    const items: Item[] = [...jobs.map((job) => ({ job })), ...results.map((recipe) => ({ recipe }))];
+    items.forEach((it, i) => c[i % cols].push(it));
     return c;
-  }, [results, cols]);
+  }, [results, cols, jobs]);
 
   const chips: { key: string; label: string; tone: string; remove: () => void }[] = [
     ...(filters.favourites ? [{ key: "fav", label: "Favourites", tone: "green", remove: () => set({ favourites: false }) }] : []),
@@ -162,7 +169,7 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
 
         <div className="browse-bar">
           <p className="result-count">
-            {loading ? "Opening your cookbook…" : `${results.length} ${results.length === 1 ? "recipe" : "recipes"}`}
+            {loading ? "Opening your cookbook…" : `${results.length} ${results.length === 1 ? "recipe" : "recipes"}${jobs.some((j) => j.status === "adding") ? ` · ${jobs.filter((j) => j.status === "adding").length} being added` : ""}`}
           </p>
           {(chips.length > 0 || count > 0) && (
             <div className="active-chips">
@@ -178,7 +185,7 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
 
         {inbox.length > 0 && <Inbox items={inbox} onFill={onFill} onOpen={onOpen} />}
 
-        {!loading && recipes.length === 0 && inbox.length === 0 && (
+        {!loading && recipes.length === 0 && inbox.length === 0 && jobs.length === 0 && (
           <div className="empty">
             <Doodle name="pot" className="empty-doodle" />
             <h2 className="h-display">Your cookbook is empty</h2>
@@ -214,13 +221,17 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
           </div>
         )}
 
-        {!loading && results.length > 0 && (
+        {!loading && (results.length > 0 || jobs.length > 0) && (
           <div className="masonry">
             {columns.map((col, c) => (
               <div className="mcol" key={c}>
-                {col.map((r) => (
-                  <RecipeCard key={r.id} recipe={r} onOpen={() => onOpen(r.id)} onFavourite={() => onFavourite(r)} />
-                ))}
+                {col.map((it) =>
+                  "job" in it ? (
+                    <JobCard key={it.job.id} job={it.job} onRetry={() => onRetryJob?.(it.job)} onDismiss={() => onDismissJob?.(it.job)} />
+                  ) : (
+                    <RecipeCard key={it.recipe.id} recipe={it.recipe} onOpen={() => onOpen(it.recipe.id)} onFavourite={() => onFavourite(it.recipe)} />
+                  ),
+                )}
               </div>
             ))}
           </div>

@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Recipe, RecipeDraft } from "@/lib/types";
 import type { Store } from "@/lib/store";
 import { EMPTY_FILTERS, type Filters } from "@/lib/filter";
@@ -9,6 +9,8 @@ import { RecipeDetail } from "./RecipeDetail";
 import { RecipeEditor } from "./RecipeEditor";
 import { AddRecipeModal, IG_LINK } from "./AddRecipeModal";
 import { takeShared } from "@/lib/share";
+import { newJob, runImport, type ImportInput, type ImportJob } from "@/lib/importer";
+import { isSavedForLater, isYouTube } from "@/lib/recipe-utils";
 import { Doodle, Icon, Modal } from "./ui";
 import { BlobButton, CircleBadge } from "./Stickers";
 
@@ -49,6 +51,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [add, setAdd] = useState<{ open: boolean; fill: Recipe | null; shared?: { url: string; caption: string; files: File[] } | null }>({ open: false, fill: null });
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [jobs, setJobs] = useState<ImportJob[]>([]);
 
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -89,8 +92,19 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
   const [pendingShare, setPendingShare] = useState<{ url: string; caption: string; files: File[] } | null>(null);
   useEffect(() => {
     if (!pendingShare || loading) return; // wait for the cookbook so duplicates are caught
-    setAdd({ open: true, fill: null, shared: pendingShare });
+    const share = pendingShare;
     setPendingShare(null);
+    const code = share.url ? instagramShortcode(share.url) : null;
+    const waiting = recipes.some(isSavedForLater);
+    const canReadNow = Boolean(geminiKey) && ((share.files.length > 0 && (code || !waiting)) || (share.files.length === 0 && isYouTube(code)));
+    if (canReadNow) {
+      const dup = code ? recipes.find((r) => r.sourceShortcode === code) : undefined;
+      if (dup) return toast("Already in your cookbook", { label: "View", run: () => go(`recipe-${dup.id}`) });
+      queue({ files: share.files, caption: share.caption, code, fillId: null });
+      return;
+    }
+    setAdd({ open: true, fill: null, shared: share });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingShare, loading]);
 
   useEffect(() => {
@@ -119,6 +133,59 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
       copy[i] = r;
       return copy;
     });
+
+  // ---- Adding recipes in the background ----
+  const recipesRef = useRef(recipes);
+  recipesRef.current = recipes;
+
+  const runJob = useCallback(
+    async (job: ImportJob) => {
+      if (!geminiKey) return;
+      setJobs((js) => js.map((j) => (j.id === job.id ? { ...j, status: "adding", error: undefined } : j)));
+      const existing = job.fillId ? recipesRef.current.find((r) => r.id === job.fillId) ?? null : null;
+      try {
+        const recipe = await runImport(job, { apiKey: geminiKey, store, existing });
+        setJobs((js) => js.filter((j) => j.id !== job.id));
+        upsert(recipe);
+        toast(existing ? `Filled in “${recipe.name}”` : `Added “${recipe.name}”`, { label: "View", run: () => go(`recipe-${recipe.id}`) });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Something went wrong.";
+        setJobs((js) => js.map((j) => (j.id === job.id ? { ...j, status: "failed", error: message } : j)));
+        toast(existing ? "Couldn't fill in that recipe" : "Couldn't add a recipe. See the card for details.");
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [geminiKey, store, toast],
+  );
+
+  const queue = useCallback(
+    (input: ImportInput) => {
+      const job = newJob(input);
+      setJobs((js) => [job, ...js]);
+      if (!input.fillId) go(""); // show it arriving in the cookbook
+      runJob(job);
+    },
+    [runJob],
+  );
+
+  /** "Read it" / "Fill in": YouTube needs nothing more, so start right away; otherwise ask for the video. */
+  const fillFrom = (r: Recipe) => {
+    if (geminiKey && isYouTube(r.sourceShortcode)) {
+      queue({ files: [], caption: "", code: null, fillId: r.id });
+      toast(`Reading “${r.name}” in the background…`);
+    } else setAdd({ open: true, fill: r, shared: null });
+  };
+
+  // Don't lose recipes that are still being added.
+  useEffect(() => {
+    if (!jobs.some((j) => j.status === "adding")) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [jobs]);
 
   async function toggleFavourite(r: Recipe) {
     const next = !r.favourite;
@@ -172,7 +239,10 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
         onOpen={(id) => go(`recipe-${id}`)}
         onFavourite={toggleFavourite}
         onAdd={() => setAdd({ open: true, fill: null, shared: null })}
-        onFill={(r) => setAdd({ open: true, fill: r, shared: null })}
+        jobs={jobs.filter((j) => !j.fillId)}
+        onRetryJob={(j) => runJob(j)}
+        onDismissJob={(j) => setJobs((js) => js.filter((x) => x.id !== j.id))}
+        onFill={fillFrom}
       />
     );
   } else if (route.page === "new") {
@@ -200,7 +270,9 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
         onEdit={() => go(`edit-${current.id}`)}
         onDelete={() => remove(current)}
         onFavourite={() => toggleFavourite(current)}
-        onAddScreenshots={() => setAdd({ open: true, fill: current, shared: null })}
+        onAddScreenshots={() => fillFrom(current)}
+        fillJob={jobs.find((j) => j.fillId === current.id) ?? null}
+        onRetryFill={(j) => runJob(j)}
         onSetLink={async (url) => {
           const code = instagramShortcode(url);
           if (!code) return "That doesn't look like an Instagram Reel or YouTube link.";
@@ -267,6 +339,8 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
         }}
         onClose={() => setAdd((a) => ({ ...a, open: false }))}
         onSaved={upsert}
+        onQueue={queue}
+        notify={toast}
         onOpenRecipe={(id) => go(`recipe-${id}`)}
         onTypeIn={() => {
           setAdd((a) => ({ ...a, open: false }));

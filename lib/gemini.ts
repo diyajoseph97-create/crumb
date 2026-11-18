@@ -167,18 +167,18 @@ export type ReadResult = { draft: Partial<RecipeDraft>; isRecipe: boolean; notes
 function friendlyError(e: unknown): Error {
   const msg = e instanceof Error ? e.message : String(e);
   if (/API key not valid|API_KEY_INVALID|permission|UNAUTHENTICATED|ACCESS_TOKEN_TYPE_UNSUPPORTED|invalid authentication|\b401\b/i.test(msg))
-    return new Error("Gemini didn't accept your API key. Check it in Settings, or create a fresh key in AI Studio and paste that.");
+    return new Error("Your key wasn't accepted. Check it in Settings.");
   if (/ALL_DAILY_LIMITS/.test(msg)) {
     const at = new Date(nextDailyReset()).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    return new Error(`You've used today's free Gemini allowance on every model Crumb can use. It resets at about ${at} your time. Your recording is still here, so try again then.`);
+    return new Error(`Today's free allowance is used up. It resets at about ${at}, so try again then.`);
   }
-  if (/quota|429|RESOURCE_EXHAUSTED/i.test(msg)) return new Error("Gemini's free per-minute limit was reached. Your recording is still here. Wait a minute and try again.");
-  if (/\b(503|500)\b|UNAVAILABLE|overloaded|high demand/i.test(msg))
-    return new Error("Gemini is very busy right now. Crumb retried a few times and tried a backup model. Your recording is still here, so try again in a minute or two.");
+  if (/quota|429|RESOURCE_EXHAUSTED/i.test(msg)) return new Error("Too many in a row. Wait a minute, then try again.");
+  if (/\b(503|500)\b|UNAVAILABLE|overloaded|high demand/i.test(msg)) return new Error("Busy right now. Try again in a minute.");
   if (/youtube|Cannot fetch content|video is (private|unavailable)|file_uri|fileUri|INVALID_ARGUMENT.*(uri|url)/i.test(msg))
-    return new Error("Gemini couldn't open this YouTube video. It has to be public (not private, unlisted or age-restricted). You can still download it and add the file instead.");
-  if (/fetch|network/i.test(msg)) return new Error("Couldn't reach Gemini. Check your internet connection.");
-  return new Error(`Gemini couldn't read this (${msg.slice(0, 140)}).`);
+    return new Error("This YouTube video can't be opened. It needs to be public (not private, unlisted or age-restricted).");
+  if (/fetch|network/i.test(msg)) return new Error("No internet connection. Try again when you're back online.");
+  if (/couldn't be processed/i.test(msg)) return new Error("That video couldn't be opened. Try another copy of it.");
+  return new Error(`Couldn't read this (${msg.slice(0, 120)}).`);
 }
 
 export async function readRecipe({ apiKey, files, text, existing, onStage, youtubeUrl }: ReadInput): Promise<ReadResult> {

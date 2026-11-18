@@ -539,3 +539,18 @@ textarea.input { height: auto; padding: 10px 14px; resize: vertical; line-height
   .overlay:not(.overlay-sheet) { place-items: end center; padding: 0; }
   .modal-dialog { border-radius: var(--r-lg) var(--r-lg) 0 0; max-height: 92vh; }
 }
+
+/* ---------- Recipes being added in the background ---------- */
+.job-media { position: relative; aspect-ratio: 4 / 3; display: grid; place-items: center; background: var(--peach-soft); overflow: hidden; }
+.job-thumb { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.is-adding .job-thumb { filter: saturate(0.6) brightness(1.05); }
+.job-media .ph-plate { width: 52%; }
+.is-adding .job-media .ph-plate { animation: spin-slow 6s linear infinite; }
+.job-shimmer { position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255, 250, 242, 0.55) 50%, transparent 70%); background-size: 250% 100%; animation: shimmer 1.8s infinite; }
+.job-card .card-title { font-size: clamp(22px, 2vw, 28px); }
+.job-card.is-failed .job-media { background: var(--paper-2); }
+.job-card.is-failed .card-sub { color: var(--danger); }
+.dots span { animation: dot 1.4s infinite; opacity: 0.2; }
+.dots span:nth-child(2) { animation-delay: 0.2s; }
+.dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dot { 30% { opacity: 1; } }

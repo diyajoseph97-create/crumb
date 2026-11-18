@@ -194,7 +194,7 @@ export function RecipeEditor({ initial, title, onCancel, onSave, uploadImage }: 
               <ToggleChip key={t} label={t} tone="tomato" on={d.tags.includes(t)} suggested={d.suggestedTags.includes(t)} onClick={() => clickTag(t)} />
             ))}
           </div>
-          {d.suggestedTags.length > 0 && <p className="muted small">Dashed tags were suggested by AI. Tap one to confirm it, or leave it.</p>}
+          {d.suggestedTags.length > 0 && <p className="muted small">Dashed tags are suggestions. Tap one to confirm it, or leave it.</p>}
         </section>
 
         <section className="ed-card span-2">

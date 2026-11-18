@@ -3,6 +3,7 @@
 // ruled boxes, typewriter ingredient list (quantity first), a coloured
 // method panel with "STEP 1." labels, and a footer strip with time & servings.
 import { isYouTube } from "@/lib/recipe-utils";
+import type { ImportJob } from "@/lib/importer";
 import { useState } from "react";
 import type { Recipe } from "@/lib/types";
 import { formatMinutes, missingParts, isIncomplete, totalIsPartial, totalMinutes } from "@/lib/recipe-utils";
@@ -19,6 +20,9 @@ type Props = {
   onAddScreenshots: () => void;
   /** Saves the Instagram link; returns an error message, or null when saved. */
   onSetLink: (url: string) => Promise<string | null>;
+  /** Details being filled in in the background, if any. */
+  fillJob?: ImportJob | null;
+  onRetryFill?: (j: ImportJob) => void;
 };
 
 function ReelLink({ url, onSetLink }: { url: string | null; onSetLink: (url: string) => Promise<string | null> }) {
@@ -62,7 +66,7 @@ function ReelLink({ url, onSetLink }: { url: string | null; onSetLink: (url: str
 
 const est = (flag: boolean | undefined, v: number | null) => (flag && v != null ? "~" : "");
 
-export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite, onAddScreenshots, onSetLink }: Props) {
+export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite, onAddScreenshots, onSetLink, fillJob, onRetryFill }: Props) {
   const [servings, setServings] = useState<number>(r.servings ?? 1);
   const [confirm, setConfirm] = useState(false);
   const factor = r.servings ? scaleFactor(r.servings, servings) : 1;
@@ -96,7 +100,25 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
         </div>
       </div>
 
-      {incomplete && (
+      {fillJob ? (
+        <section className="notice">
+          <Doodle name="sparkle" className="notice-doodle" />
+          <div>
+            {fillJob.status === "adding" ? (
+              <>
+                <h2 className="notice-title">Filling in the details<span className="dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span></h2>
+                <p className="muted">This page updates by itself. You can keep browsing.</p>
+              </>
+            ) : (
+              <>
+                <h2 className="notice-title">Couldn't fill in the details</h2>
+                <p className="muted">{fillJob.error}</p>
+                <button className="btn btn-primary btn-sm" onClick={() => onRetryFill?.(fillJob)}>Try again</button>
+              </>
+            )}
+          </div>
+        </section>
+      ) : incomplete && (
         <section className="notice notice-warn">
           <Doodle name="sparkle" className="notice-doodle" />
           <div>
@@ -105,7 +127,7 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
             {r.importNotes && <p className="muted">{r.importNotes}</p>}
             <div className="row gap-sm wrap">
               <button className="btn btn-primary btn-sm" onClick={onAddScreenshots}>
-                <Icon name="play" size={16} /> Fill in from a video or screenshots
+                <Icon name="play" size={16} /> {isYouTube(r.sourceShortcode) ? "Fill in from the YouTube video" : "Fill in from a video or screenshots"}
               </button>
               <button className="btn btn-outline btn-sm" onClick={onEdit}>
                 <Icon name="edit" size={16} /> Fill in by hand
@@ -167,7 +189,7 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
                   <div className="tag-row">
                     {r.tags.map((t) => <span key={t} className="tag">{t}</span>)}
                     {r.suggestedTags.map((t) => (
-                      <span key={t} className="tag suggested" title="Suggested by AI, not confirmed yet. Edit the recipe to confirm.">{t}?</span>
+                      <span key={t} className="tag suggested" title="Suggested, not confirmed yet. Edit the recipe to confirm.">{t}?</span>
                     ))}
                   </div>
                 )}
@@ -187,7 +209,7 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
                         </div>
                       ))}
                     </dl>
-                    <p className="mag-small">Per serving · AI estimate, not verified.</p>
+                    <p className="mag-small">Per serving · rough estimate.</p>
                   </>
                 )}
               </div>

@@ -98,8 +98,9 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const isRetired = (e: unknown) => /no longer available|not found|NOT_FOUND|\b404\b|is not supported for generateContent/i.test(e instanceof Error ? e.message : String(e));
 const INLINE_LIMIT = 14 * 1024 * 1024; // bigger videos are uploaded to Gemini first
 
-const SYSTEM = `You extract recipes from social media posts (Instagram Reels) for a personal cookbook.
-You may receive: a video (often a screen recording of the Reel), screenshots, and caption text.
+const SYSTEM = `You extract recipes from social media posts (Instagram Reels and YouTube videos) for a personal cookbook.
+You may receive: a video (a screen recording of the Reel, a downloaded Reel, or a YouTube video), screenshots, and caption/description text.
+- If a video has several recipes, extract the main one (the one the video is about); mention the others in notes.
 Strict rules:
 - Ingredients, quantities and steps: use ONLY what is said, shown on screen, written in the caption/screenshots, or clearly visible being added. Never invent them.
 - Amounts matter most. Look and listen carefully for them: spoken amounts ("two spoons of chilli powder", "a cup of rice", "one ladle of oil"), on-screen text, labels on packets or measuring cups, and countable items you can see (e.g. "3 onions" when three are clearly chopped). Write them as given, e.g. "2 spoons", "1 ladle", "3".
@@ -156,6 +157,8 @@ export type ReadInput = {
   files: File[]; // images and/or one video
   text?: string;
   existing?: Recipe; // when filling in an incomplete recipe
+  /** A YouTube link Gemini can watch directly (used when no video file is attached). */
+  youtubeUrl?: string | null;
   onStage?: (stage: "upload" | "read" | "busy") => void;
 };
 
@@ -172,14 +175,22 @@ function friendlyError(e: unknown): Error {
   if (/quota|429|RESOURCE_EXHAUSTED/i.test(msg)) return new Error("Gemini's free per-minute limit was reached. Your recording is still here. Wait a minute and try again.");
   if (/\b(503|500)\b|UNAVAILABLE|overloaded|high demand/i.test(msg))
     return new Error("Gemini is very busy right now. Crumb retried a few times and tried a backup model. Your recording is still here, so try again in a minute or two.");
+  if (/youtube|Cannot fetch content|video is (private|unavailable)|file_uri|fileUri|INVALID_ARGUMENT.*(uri|url)/i.test(msg))
+    return new Error("Gemini couldn't open this YouTube video. It has to be public (not private, unlisted or age-restricted). You can still download it and add the file instead.");
   if (/fetch|network/i.test(msg)) return new Error("Couldn't reach Gemini. Check your internet connection.");
   return new Error(`Gemini couldn't read this (${msg.slice(0, 140)}).`);
 }
 
-export async function readRecipe({ apiKey, files, text, existing, onStage }: ReadInput): Promise<ReadResult> {
+export async function readRecipe({ apiKey, files, text, existing, onStage, youtubeUrl }: ReadInput): Promise<ReadResult> {
   const ai = new GoogleGenAI({ apiKey });
   const parts: any[] = [];
   let usedVideo = false;
+  // YouTube: Gemini watches the public video straight from its link (no download).
+  const watchYouTube = Boolean(youtubeUrl) && !files.some((f) => f.type.startsWith("video/"));
+  if (watchYouTube) {
+    parts.push({ fileData: { fileUri: youtubeUrl } });
+    usedVideo = true;
+  }
   try {
     onStage?.("upload");
     for (const f of files) {
@@ -229,7 +240,14 @@ export async function readRecipe({ apiKey, files, text, existing, onStage }: Rea
       ai.models.generateContent({
         model,
         contents: [{ role: "user", parts }],
-        config: { systemInstruction: SYSTEM, responseMimeType: "application/json", responseSchema: SCHEMA as any, temperature: 0 },
+        config: {
+          systemInstruction: SYSTEM,
+          responseMimeType: "application/json",
+          responseSchema: SCHEMA as any,
+          temperature: 0,
+          // YouTube videos can be long; lower frame detail keeps them inside the free per-minute token limit.
+          ...(watchYouTube ? { mediaResolution: "MEDIA_RESOLUTION_LOW" as any } : {}),
+        },
       });
     // Try the usual model; if Google is busy, wait and retry, then try backup models.
     const preferred = await currentModel(ai);
@@ -331,7 +349,7 @@ export function toResult(o: any, usedVideo: boolean): ReadResult {
 /** When filling in an existing recipe: never overwrite something we already had. */
 export function mergeIntoExisting(existing: Recipe, found: Partial<RecipeDraft>): Partial<RecipeDraft> {
   const patch: Partial<RecipeDraft> = {};
-  if (!existing.name.trim() || existing.name === "Recipe from Instagram") patch.name = found.name || existing.name;
+  if (!existing.name.trim() || existing.name === "Recipe from Instagram" || existing.name === "Recipe from YouTube") patch.name = found.name || existing.name;
   if (found.ingredients && found.ingredients.length >= existing.ingredients.length) patch.ingredients = found.ingredients;
   if (found.steps && found.steps.length >= existing.steps.length) patch.steps = found.steps;
   const timesMissing = existing.prepMinutes == null && existing.cookMinutes == null;

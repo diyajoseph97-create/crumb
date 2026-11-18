@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ImportResult, Recipe, RecipeDraft } from "@/lib/types";
 import type { Store } from "@/lib/store";
-import { canonicalInstagramUrl, emptyDraft, instagramShortcode, isIncomplete, isSavedForLater } from "@/lib/recipe-utils";
+import { canonicalInstagramUrl, emptyDraft, instagramShortcode, isIncomplete, isSavedForLater, isYouTube, SOURCE_LINK, youtubeThumbnail, youtubeVideoId } from "@/lib/recipe-utils";
 import { mergeIntoExisting, readRecipe } from "@/lib/gemini";
 import { captureFrame } from "@/lib/video-frame";
 import { Doodle, Icon, Modal } from "./ui";
@@ -23,7 +23,7 @@ type Props = {
   shared?: { url: string; caption: string; files: File[] } | null;
 };
 
-export const IG_LINK = /https?:\/\/(?:www\.|m\.)?(?:instagram\.com|instagr\.am)\/(?:share\/)?(?:(?:reel|reels|p|tv)\/)?[A-Za-z0-9_-]{5,}\/?(?:\?[^\s]*)?/i;
+export const IG_LINK = SOURCE_LINK;
 
 const STEPS = ["Sending to Gemini", "Watching & reading", "Picking a photo", "Saving to your cookbook"];
 type Phase = { kind: "form" } | { kind: "working"; step: number } | { kind: "done"; result: ImportResult };
@@ -66,7 +66,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
         else if (geminiKey) setAuto("read");
         else setError("To read recipes automatically, add your Gemini key in Settings first.");
       } else if (shared.url && instagramShortcode(shared.url)) {
-        setAuto("later");
+        setAuto(isYouTube(instagramShortcode(shared.url)) && geminiKey ? "read" : "later");
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -75,7 +75,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
   // Shared from the phone: start straight away once the form is filled in.
   useEffect(() => {
     if (!auto) return;
-    if (auto === "read" && files.length === 0) return;
+    if (auto === "read" && files.length === 0 && !ytUrl) return;
     const run = auto;
     setAuto(null);
     if (run === "read") submit();
@@ -119,8 +119,10 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
     });
   }
 
-  const hasMaterial = files.length > 0 || caption.trim().length > 0 || Boolean(fillRecipe?.originalCaption);
   const code = url.trim() ? instagramShortcode(url) : null;
+  // A public YouTube video can be read from its link alone.
+  const ytUrl = code && isYouTube(code) ? canonicalInstagramUrl(code) : fillRecipe && isYouTube(fillRecipe.sourceShortcode) ? fillRecipe.sourceUrl : null;
+  const hasMaterial = files.length > 0 || caption.trim().length > 0 || Boolean(fillRecipe?.originalCaption) || Boolean(ytUrl);
 
   /** Keep the link (and caption, if pasted) now; read the recipe later from the inbox. */
   async function saveForLater() {
@@ -132,11 +134,13 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
     try {
       const recipe = await store.create({
         ...emptyDraft(),
-        name: "Recipe from Instagram",
+        name: isYouTube(code) ? "Recipe from YouTube" : "Recipe from Instagram",
         sourceUrl: canonicalInstagramUrl(code),
         sourceShortcode: code,
         originalCaption: caption.trim() || null,
-        importNotes: "Instagram only shared the link. Download the Reel (⋯ → Download in Instagram), then tap “Fill in from a video” and pick it.",
+        importNotes: isYouTube(code)
+          ? "Saved for later. Tap “Read it” and Crumb watches the YouTube video for you."
+          : "Instagram only shared the link. Download the Reel (⋯ → Download in Instagram), then tap “Fill in from a video” and pick it.",
       });
       onSaved(recipe);
       setPhase({ kind: "done", result: { status: "later", recipe } });
@@ -149,7 +153,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
     e?.preventDefault();
     setError(null);
     if (url.trim() && !code) {
-      setError("That doesn't look like an Instagram Reel or post link. It should look like instagram.com/reel/…");
+      setError("That doesn't look like an Instagram Reel or YouTube link. It should look like instagram.com/reel/… or youtube.com/watch?v=…");
       return;
     }
     if (code && !fillRecipe) {
@@ -160,7 +164,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
       }
     }
     if (!hasMaterial) {
-      setError("Paste the caption, or add a screen recording or screenshots.");
+      setError("Add a YouTube link, the downloaded Reel, screenshots, or paste the caption.");
       return;
     }
 
@@ -177,6 +181,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
         files: files.map((f) => f.file),
         text: caption.trim() || fillRecipe?.originalCaption || "",
         existing: fillRecipe ?? undefined,
+        youtubeUrl: ytUrl,
         onStage: (s) => {
           if (s === "busy") return setBusy(true);
           setPhase({ kind: "working", step: s === "upload" ? 0 : 1 });
@@ -195,6 +200,8 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
         const frame = await captureFrame(video, result.heroFrameSeconds);
         if (frame) imageUrl = await store.uploadImage(frame).catch(() => null);
       }
+      const ytId = youtubeVideoId(ytUrl);
+      if (!imageUrl && ytId && !fillRecipe?.imageUrl) imageUrl = await youtubeThumbnail(ytId).catch(() => null);
 
       setPhase({ kind: "working", step: 3 });
       const usedCaption = caption.trim() || fillRecipe?.originalCaption;
@@ -256,7 +263,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
               <p className="muted">
                 {fillRecipe
                   ? `Add a recording, screenshots or the caption of “${fillRecipe.name}”. Crumb fills in what's missing and keeps what you have.`
-                  : "Drop in the downloaded Reel, and add its link and caption."}
+                  : "Paste a YouTube link, or drop in a downloaded Reel with its link and caption."}
               </p>
             </div>
 
@@ -278,18 +285,19 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
             {!fillRecipe && (
               <label className="field link-field">
                 <span className="field-label">
-                  Reel link <span className="muted">(so you can watch the original later)</span>
+                  Instagram or YouTube link <span className="muted">(YouTube links are read directly)</span>
                 </span>
                 <span className={`link-input ${url && !code ? "bad" : ""}`}>
                   <Icon name="link" size={16} />
-                  <input type="url" inputMode="url" value={url} onChange={(e) => setUrl(e.target.value.trim())} placeholder="Paste it from Instagram: Share → Copy link" />
+                  <input type="url" inputMode="url" value={url} onChange={(e) => setUrl(e.target.value.trim())} placeholder="Paste a Reel or YouTube link (Share → Copy link)" />
                   {code && <Icon name="check" size={16} className="link-ok" />}
                 </span>
-                {url && !code && <span className="hint bad">That doesn't look like an Instagram Reel link.</span>}
+                {url && !code && <span className="hint bad">That doesn't look like an Instagram Reel or YouTube link.</span>}
+                {code && isYouTube(code) && <span className="hint">Crumb watches the YouTube video itself, so there's nothing to download. Paste the description below if it lists the amounts.</span>}
               </label>
             )}
 
-            {!video && (
+            {!video && !ytUrl && (
               <button type="button" className={`dropzone big ${dragging ? "over" : ""}`} onClick={() => fileRef.current?.click()}>
                 <Icon name="play" size={30} />
                 <strong>Drop the downloaded Reel here</strong>
@@ -327,7 +335,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
                 value={caption}
                 onChange={(e) => onSmartText(e.target.value)}
                 onPaste={onPaste}
-                placeholder={fillRecipe ? "Paste the caption or recipe text (optional)…" : "Paste the Reel's caption here (it usually has the ingredient amounts)…"}
+                placeholder={ytUrl ? "Paste the video's description here (optional, it often lists the amounts)…" : fillRecipe ? "Paste the caption or recipe text (optional)…" : "Paste the Reel's caption here (it usually has the ingredient amounts)…"}
                 aria-label="Paste a link or caption"
               />
             </div>
@@ -444,8 +452,14 @@ function Result({ result, filling, onOpen, onClose, onTryAgain }: {
       <div className="result">
         <div className="result-badge tone-butter pop"><Icon name="link" size={26} /></div>
         <h2 className="h-display h-md">Saved for later</h2>
-        <p className="muted">Instagram only shares the link, not the video, so there's no recipe to read yet. It's waiting in <strong>Saved for later</strong>.</p>
-        <p className="muted small">When you're ready: in Instagram, tap <strong>⋯ → Download</strong> on the Reel. Then tap <strong>Read it</strong> on the saved Reel here and pick the video (paste the caption too, it often has the amounts).</p>
+        {isYouTube(result.recipe.sourceShortcode) ? (
+          <p className="muted">It's waiting in <strong>Saved for later</strong>. Tap <strong>Read it</strong> when you're ready and Crumb watches the YouTube video for you.</p>
+        ) : (
+          <>
+            <p className="muted">Instagram only shares the link, not the video, so there's no recipe to read yet. It's waiting in <strong>Saved for later</strong>.</p>
+            <p className="muted small">When you're ready: in Instagram, tap <strong>⋯ → Download</strong> on the Reel. Then tap <strong>Read it</strong> on the saved Reel here and pick the video (paste the caption too, it often has the amounts).</p>
+          </>
+        )}
         <div className="row gap-sm center">
           <button className="btn btn-primary" onClick={onClose}>Done</button>
         </div>

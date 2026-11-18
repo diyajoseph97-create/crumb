@@ -7,7 +7,7 @@ import type { Recipe } from "@/lib/types";
 import { CUISINES, MEALS, TAGS, TIME_RANGES } from "@/lib/constants";
 import { activeFilterCount, allIngredients, applyFilters, EMPTY_FILTERS, type Filters } from "@/lib/filter";
 import { displayName } from "@/lib/synonyms";
-import { isSavedForLater } from "@/lib/recipe-utils";
+import { isSavedForLater, isYouTube } from "@/lib/recipe-utils";
 import { Doodle, Icon, Modal } from "./ui";
 import { TableScene } from "./Porcelain";
 import { Dropdown } from "./Dropdown";
@@ -69,7 +69,7 @@ function Inbox({ items, onFill, onOpen }: { items: Recipe[]; onFill: (r: Recipe)
             return (
               <li key={r.id} className="inbox-item">
                 <button className="inbox-main" onClick={() => onOpen(r.id)}>
-                  <span className="inbox-name">{preview || `Instagram Reel · ${r.sourceShortcode ?? ""}`}</span>
+                  <span className="inbox-name">{preview || `${isYouTube(r.sourceShortcode) ? "YouTube video" : "Instagram Reel"} · ${(r.sourceShortcode ?? "").replace(/^yt:/, "")}`}</span>
                   <span className="muted small">Saved {ago(r.createdAt)}{r.originalCaption ? " · caption saved" : ""}</span>
                 </button>
                 <a className="icon-btn" href={r.sourceUrl!} target="_blank" rel="noopener noreferrer" aria-label="Open on Instagram" title="Open on Instagram">

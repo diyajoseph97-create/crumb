@@ -174,7 +174,7 @@ export function RecipeEditor({ initial, title, onCancel, onSave, uploadImage }: 
 
           <label className="field">
             <span className="field-label">Original Instagram link</span>
-            <input className="input" type="url" value={d.sourceUrl ?? ""} onChange={(e) => set({ sourceUrl: e.target.value })} placeholder="https://www.instagram.com/reel/…" />
+            <input className="input" type="url" value={d.sourceUrl ?? ""} onChange={(e) => set({ sourceUrl: e.target.value })} placeholder="Instagram Reel or YouTube link" />
           </label>
         </section>
 

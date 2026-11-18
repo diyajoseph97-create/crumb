@@ -126,9 +126,9 @@ function InstallSection() {
   }, []);
   return (
     <section className="settings-section">
-      <h3 className="settings-h">Share from Instagram (Android)</h3>
+      <h3 className="settings-h">Share from Instagram or YouTube (Android)</h3>
       {installed ? (
-        <p className="muted small">Crumb is installed. In Instagram, tap <strong>Share</strong> on a Reel, then pick <strong>Crumb</strong>. A link goes to <em>Saved for later</em>; a downloaded video from your gallery is read straight away.</p>
+        <p className="muted small">Crumb is installed. Tap <strong>Share</strong> on a Reel or YouTube video, then pick <strong>Crumb</strong>. YouTube videos are read straight away; Instagram links go to <em>Saved for later</em> until you add the downloaded video.</p>
       ) : (
         <>
           <p className="muted small">

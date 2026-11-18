@@ -203,9 +203,9 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
         onAddScreenshots={() => setAdd({ open: true, fill: current, shared: null })}
         onSetLink={async (url) => {
           const code = instagramShortcode(url);
-          if (!code) return "That doesn't look like an Instagram Reel link. It should look like instagram.com/reel/…";
+          if (!code) return "That doesn't look like an Instagram Reel or YouTube link.";
           const other = recipes.find((x) => x.sourceShortcode === code && x.id !== current.id);
-          if (other) return `This Reel is already saved as “${other.name}”.`;
+          if (other) return `This video is already saved as “${other.name}”.`;
           try {
             upsert(await store.update(current.id, { sourceUrl: canonicalInstagramUrl(code), sourceShortcode: code }));
             toast("Reel link saved");
@@ -223,7 +223,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
       <header className="topbar">
         <button className="wordmark" onClick={() => go("")} aria-label="Crumb home">
           <span className="wordmark-title">Crumb's Recipes</span>
-          <span className="wordmark-sub">(saved from Instagram, cooked at home)</span>
+          <span className="wordmark-sub">(saved from Instagram &amp; YouTube, cooked at home)</span>
         </button>
         <div className="topbar-stickers">
           <button className="settings-link" onClick={() => setSettingsOpen(true)} aria-label="Settings">

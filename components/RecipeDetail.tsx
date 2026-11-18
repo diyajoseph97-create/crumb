@@ -2,6 +2,7 @@
 // Recipe page laid out like a printed cookbook spread: graph-paper page,
 // ruled boxes, typewriter ingredient list (quantity first), a coloured
 // method panel with "STEP 1." labels, and a footer strip with time & servings.
+import { isYouTube } from "@/lib/recipe-utils";
 import { useState } from "react";
 import type { Recipe } from "@/lib/types";
 import { formatMinutes, missingParts, isIncomplete, totalIsPartial, totalMinutes } from "@/lib/recipe-utils";
@@ -28,14 +29,14 @@ function ReelLink({ url, onSetLink }: { url: string | null; onSetLink: (url: str
   if (url) {
     return (
       <a className="reel-link" href={url} target="_blank" rel="noopener noreferrer">
-        <Icon name="play" size={18} /> Watch the original Reel <Icon name="external" size={15} />
+        <Icon name="play" size={18} /> {isYouTube(url) ? "Watch on YouTube" : "Watch the original Reel"} <Icon name="external" size={15} />
       </a>
     );
   }
   if (!editing) {
     return (
       <button className="reel-link add" onClick={() => setEditing(true)}>
-        <Icon name="link" size={17} /> Add the Reel link
+        <Icon name="link" size={17} /> Add the Reel or YouTube link
       </button>
     );
   }
@@ -51,7 +52,7 @@ function ReelLink({ url, onSetLink }: { url: string | null; onSetLink: (url: str
         else setEditing(false);
       }}
     >
-      <input className="input" type="text" inputMode="url" value={value} onChange={(e) => { setValue(e.target.value); setError(null); }} placeholder="https://www.instagram.com/reel/…" autoFocus aria-label="Instagram Reel link" />
+      <input className="input" type="text" inputMode="url" value={value} onChange={(e) => { setValue(e.target.value); setError(null); }} placeholder="Instagram Reel or YouTube link" autoFocus aria-label="Instagram Reel or YouTube link" />
       <button className="btn btn-primary btn-sm" disabled={busy || !value.trim()}>Save</button>
       <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditing(false)}>Cancel</button>
       {error && <p className="form-error">{error}</p>}

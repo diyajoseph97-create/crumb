@@ -55,13 +55,30 @@ export function timeRangeOf(r: Recipe): string | null {
   return TIME_RANGES.find((x) => x.test(t))?.id ?? null;
 }
 
-/** Turn any Instagram URL into its shortcode: instagram.com/reel/ABC?igsh=.. -> ABC */
+// ---------- Where a recipe came from: Instagram or YouTube ----------
+// Each source gets a short "key" used to spot duplicates:
+//   Instagram  ABC123 (or share/reel/ID for newer share links)
+//   YouTube    yt:VIDEOID
+
+function youtubeId(u: URL): string | null {
+  const host = u.hostname.replace(/^(www|m|music)\./i, "").toLowerCase();
+  let id: string | null = null;
+  if (host === "youtu.be") id = u.pathname.slice(1).split("/")[0];
+  else if (host === "youtube.com" || host === "youtube-nocookie.com") {
+    if (u.pathname === "/watch") id = u.searchParams.get("v");
+    else id = u.pathname.match(/^\/(?:shorts|live|embed|v)\/([^/?#]+)/)?.[1] ?? null;
+  }
+  return id && /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null;
+}
+
+/** Turn an Instagram or YouTube link into its key: instagram.com/reel/ABC?igsh=.. -> ABC, youtu.be/XYZ -> yt:XYZ */
 export function instagramShortcode(url: string): string | null {
   try {
     const u = new URL(url.trim());
+    const yt = youtubeId(u);
+    if (yt) return `yt:${yt}`;
     if (!/(^|\.)instagram\.com$/i.test(u.hostname) && !/(^|\.)instagr\.am$/i.test(u.hostname)) return null;
     // Newer app share links: instagram.com/share/reel/BAxyz… or instagram.com/share/BAxyz…
-    // They redirect to the Reel; we keep the share path as the key.
     const share = u.pathname.match(/^\/share\/(?:(reel|reels|p|tv)\/)?([A-Za-z0-9_-]+)/i);
     if (share) return `share/${share[1] ? "reel/" : ""}${share[2]}`;
     const m = u.pathname.match(/\/(?:reel|reels|p|tv)\/([A-Za-z0-9_-]+)/);
@@ -70,10 +87,39 @@ export function instagramShortcode(url: string): string | null {
     return null;
   }
 }
+export const sourceKey = instagramShortcode;
 
-export function canonicalInstagramUrl(shortcode: string) {
-  if (shortcode.startsWith("share/")) return `https://www.instagram.com/${shortcode}/`;
-  return `https://www.instagram.com/reel/${shortcode}/`;
+export function canonicalInstagramUrl(key: string) {
+  if (key.startsWith("yt:")) return `https://www.youtube.com/watch?v=${key.slice(3)}`;
+  if (key.startsWith("share/")) return `https://www.instagram.com/${key}/`;
+  return `https://www.instagram.com/reel/${key}/`;
+}
+export const canonicalSourceUrl = canonicalInstagramUrl;
+
+export const isYouTube = (urlOrKey: string | null | undefined) =>
+  Boolean(urlOrKey && (urlOrKey.startsWith("yt:") || /youtu\.?be/i.test(urlOrKey)));
+export const youtubeVideoId = (urlOrKey: string | null | undefined): string | null => {
+  if (!urlOrKey) return null;
+  const k = urlOrKey.startsWith("yt:") ? urlOrKey : instagramShortcode(urlOrKey);
+  return k && k.startsWith("yt:") ? k.slice(3) : null;
+};
+/** "Reel" or "YouTube video", for buttons and messages. */
+export const sourceNoun = (url: string | null | undefined) => (isYouTube(url) ? "YouTube video" : "Reel");
+
+/** Finds an Instagram or YouTube link inside any text. */
+export const SOURCE_LINK =
+  /https?:\/\/(?:(?:www\.|m\.)?(?:instagram\.com|instagr\.am)\/(?:share\/)?(?:(?:reel|reels|p|tv)\/)?[A-Za-z0-9_-]{5,}|(?:www\.|m\.|music\.)?(?:youtube\.com\/(?:watch\?[^\s]*v=|shorts\/|live\/|embed\/)|youtu\.be\/)[A-Za-z0-9_-]{11})\/?(?:[?&][^\s]*)?/i;
+
+/** Best available YouTube thumbnail (maxres when it exists, else hq). */
+export async function youtubeThumbnail(id: string): Promise<string> {
+  const max = `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`;
+  const ok = await new Promise<boolean>((res) => {
+    const img = new Image();
+    img.onload = () => res(img.naturalWidth > 200); // a missing image is a 120px placeholder
+    img.onerror = () => res(false);
+    img.src = max;
+  });
+  return ok ? max : `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
 }
 
 export function newId() {

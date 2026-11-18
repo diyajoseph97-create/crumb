@@ -23,25 +23,22 @@ export function RecipeCard({
         </div>
         <div className="card-body">
           <h3 className="card-title">{recipe.name || "Untitled recipe"}</h3>
-          <div className="card-meta">
+          {(recipe.cuisines[0] || recipe.meals[0]) && (
+            <p className="card-sub">
+              {[recipe.cuisines.find((c) => c !== "Indian") ?? recipe.cuisines[0], recipe.meals[0]].filter(Boolean).join(" · ")}
+            </p>
+          )}
+          <div className="card-foot">
             {total != null && (
-              <span className="meta-pill">
-                <Icon name="clock" size={14} /> {recipe.timesEstimated ? "~" : ""}{formatMinutes(total)}
+              <span className="card-time">
+                {recipe.timesEstimated ? "~" : ""}
+                {formatMinutes(total).replace("min", "minutes").replace("hr", "hour")}
               </span>
             )}
-            {recipe.cuisines[0] && (
-              // show the most specific cuisine, e.g. "South Indian" rather than "Indian"
-              <span className="meta-text">{recipe.cuisines.find((c) => c !== "Indian") ?? recipe.cuisines[0]}</span>
-            )}
-            {recipe.meals[0] && <span className="meta-text">· {recipe.meals[0]}</span>}
+            {tags.map((t) => (
+              <span key={t} className="mini-tag">{t}</span>
+            ))}
           </div>
-          {tags.length > 0 && (
-            <div className="card-tags">
-              {tags.map((t) => (
-                <span key={t} className="mini-tag">{t}</span>
-              ))}
-            </div>
-          )}
         </div>
       </button>
       <button

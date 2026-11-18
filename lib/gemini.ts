@@ -69,7 +69,8 @@ const SYSTEM = `You extract recipes from social media posts (Instagram Reels) fo
 You may receive: a video (often a screen recording of the Reel), screenshots, and caption text.
 Strict rules:
 - Ingredients, quantities and steps: use ONLY what is said, shown on screen, written in the caption/screenshots, or clearly visible being added. Never invent them.
-- If an ingredient's amount isn't said, shown or written, write the ingredient without an amount (e.g. "Butter").
+- Amounts matter most. Look and listen carefully for them: spoken amounts ("two spoons of chilli powder", "a cup of rice", "one ladle of oil"), on-screen text, labels on packets or measuring cups, and countable items you can see (e.g. "3 onions" when three are clearly chopped). Write them as given, e.g. "2 spoons", "1 ladle", "3".
+- If an ingredient's amount isn't said, shown, written or clearly countable, write the ingredient without an amount (e.g. "Butter").
 - If no method is given anywhere, return an empty steps list. When steps come from the video, write them as clear instructions in the order shown.
 - Times and servings: use stated values. If not stated, give a realistic estimate from the steps and quantities and set the matching *_estimated flag to true.
 - Combine all sources; if they conflict, prefer written text (caption, on-screen text) over what is merely shown.

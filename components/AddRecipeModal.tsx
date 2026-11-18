@@ -222,18 +222,22 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
               <p className="muted">
                 {fillRecipe
                   ? `Add a recording, screenshots or the caption of “${fillRecipe.name}”. Crumb fills in what's missing and keeps what you have.`
-                  : "Drop in the downloaded Reel. Add its link and caption too if you have them."}
+                  : "Drop in the downloaded Reel, and add its link and caption."}
               </p>
             </div>
 
-            {url && !fillRecipe && (
-              <div className={`link-chip ${code ? "" : "bad"}`}>
-                <Icon name="link" size={16} />
-                <span className="link-chip-text">{code ? `Instagram Reel · ${code}` : url}</span>
-                <button type="button" className="icon-btn sm" onClick={() => setUrl("")} aria-label="Remove link">
-                  <Icon name="x" size={14} />
-                </button>
-              </div>
+            {!fillRecipe && (
+              <label className="field link-field">
+                <span className="field-label">
+                  Reel link <span className="muted">(so you can watch the original later)</span>
+                </span>
+                <span className={`link-input ${url && !code ? "bad" : ""}`}>
+                  <Icon name="link" size={16} />
+                  <input type="url" inputMode="url" value={url} onChange={(e) => setUrl(e.target.value.trim())} placeholder="Paste it from Instagram: Share → Copy link" />
+                  {code && <Icon name="check" size={16} className="link-ok" />}
+                </span>
+                {url && !code && <span className="hint bad">That doesn't look like an Instagram Reel link.</span>}
+              </label>
             )}
 
             {!video && (
@@ -274,7 +278,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
                 value={caption}
                 onChange={(e) => onSmartText(e.target.value)}
                 onPaste={onPaste}
-                placeholder={fillRecipe ? "Paste the caption or recipe text (optional)…" : "Optional: paste the Reel link (for “Watch original”) and its caption…"}
+                placeholder={fillRecipe ? "Paste the caption or recipe text (optional)…" : "Paste the Reel's caption here (it usually has the ingredient amounts)…"}
                 aria-label="Paste a link or caption"
               />
             </div>
@@ -287,6 +291,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
               <ul className="help-list">
                 <li><strong>The video is what matters.</strong> Crumb listens to what's said and reads on-screen text, so the recipe is found even when it isn't in the caption.</li>
                 <li><strong>Add the link</strong> so you can rewatch the original and Crumb can warn you about duplicates.</li>
+                <li><strong>Paste the caption too.</strong> Most creators put the ingredient amounts there, and a downloaded video doesn't include it.</li>
                 <li><strong>No time now?</strong> Paste just the link and choose <em>Save for later</em>.</li>
               </ul>
             )}

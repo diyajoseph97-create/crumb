@@ -16,11 +16,52 @@ type Props = {
   onDelete: () => void;
   onFavourite: () => void;
   onAddScreenshots: () => void;
+  /** Saves the Instagram link; returns an error message, or null when saved. */
+  onSetLink: (url: string) => Promise<string | null>;
 };
+
+function ReelLink({ url, onSetLink }: { url: string | null; onSetLink: (url: string) => Promise<string | null> }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  if (url) {
+    return (
+      <a className="reel-link" href={url} target="_blank" rel="noopener noreferrer">
+        <Icon name="play" size={18} /> Watch the original Reel <Icon name="external" size={15} />
+      </a>
+    );
+  }
+  if (!editing) {
+    return (
+      <button className="reel-link add" onClick={() => setEditing(true)}>
+        <Icon name="link" size={17} /> Add the Reel link
+      </button>
+    );
+  }
+  return (
+    <form
+      className="reel-form"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setBusy(true);
+        const err = await onSetLink(value.trim());
+        setBusy(false);
+        if (err) setError(err);
+        else setEditing(false);
+      }}
+    >
+      <input className="input" type="text" inputMode="url" value={value} onChange={(e) => { setValue(e.target.value); setError(null); }} placeholder="https://www.instagram.com/reel/…" autoFocus aria-label="Instagram Reel link" />
+      <button className="btn btn-primary btn-sm" disabled={busy || !value.trim()}>Save</button>
+      <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditing(false)}>Cancel</button>
+      {error && <p className="form-error">{error}</p>}
+    </form>
+  );
+}
 
 const est = (flag: boolean | undefined, v: number | null) => (flag && v != null ? "~" : "");
 
-export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite, onAddScreenshots }: Props) {
+export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite, onAddScreenshots, onSetLink }: Props) {
   const [servings, setServings] = useState<number>(r.servings ?? 1);
   const [confirm, setConfirm] = useState(false);
   const factor = r.servings ? scaleFactor(r.servings, servings) : 1;
@@ -42,11 +83,6 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
           <Icon name="back" size={18} /> All recipes
         </button>
         <div className="row gap-xs wrap end">
-          {r.sourceUrl && (
-            <a className="btn btn-primary btn-sm" href={r.sourceUrl} target="_blank" rel="noopener noreferrer">
-              <Icon name="play" size={16} /> Watch original video <Icon name="external" size={14} />
-            </a>
-          )}
           <button className={`btn btn-outline btn-sm fav-toggle ${r.favourite ? "on" : ""}`} onClick={onFavourite} aria-pressed={r.favourite}>
             <Icon name="heart" size={15} filled={r.favourite} /> {r.favourite ? "Favourite" : "Add to favourites"}
           </button>
@@ -180,6 +216,9 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
           <h2 className="mag-head mag-head-main">Recipe</h2>
           <div className="mag-photo">
             <RecipeImage recipe={r} variant="hero" />
+          </div>
+          <div className="mag-reel">
+            <ReelLink url={r.sourceUrl} onSetLink={onSetLink} />
           </div>
           <div className="mag-panel">
             {categories.length > 0 && <p className="mag-cats">{categories.join(" · ")}</p>}

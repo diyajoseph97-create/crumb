@@ -3,12 +3,13 @@ import { useCallback, useEffect, useState } from "react";
 import type { Recipe, RecipeDraft } from "@/lib/types";
 import type { Store } from "@/lib/store";
 import { EMPTY_FILTERS, type Filters } from "@/lib/filter";
-import { emptyDraft } from "@/lib/recipe-utils";
+import { canonicalInstagramUrl, emptyDraft, instagramShortcode } from "@/lib/recipe-utils";
 import { Home } from "./Home";
 import { RecipeDetail } from "./RecipeDetail";
 import { RecipeEditor } from "./RecipeEditor";
 import { AddRecipeModal } from "./AddRecipeModal";
-import { Doodle, Icon, Logo, Modal } from "./ui";
+import { Doodle, Icon, Modal } from "./ui";
+import { BlobButton, CircleBadge } from "./Stickers";
 
 // Simple page routing using the part of the URL after "#":
 //   (none)        library
@@ -173,6 +174,19 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
         onDelete={() => remove(current)}
         onFavourite={() => toggleFavourite(current)}
         onAddScreenshots={() => setAdd({ open: true, fill: current })}
+        onSetLink={async (url) => {
+          const code = instagramShortcode(url);
+          if (!code) return "That doesn't look like an Instagram Reel link. It should look like instagram.com/reel/…";
+          const other = recipes.find((x) => x.sourceShortcode === code && x.id !== current.id);
+          if (other) return `This Reel is already saved as “${other.name}”.`;
+          try {
+            upsert(await store.update(current.id, { sourceUrl: canonicalInstagramUrl(code), sourceShortcode: code }));
+            toast("Reel link saved");
+            return null;
+          } catch (e) {
+            return e instanceof Error ? e.message : "Couldn't save the link.";
+          }
+        }}
       />
     );
   }
@@ -180,14 +194,31 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
   return (
     <div className="app">
       <header className="topbar">
-        <Logo onClick={() => go("")} />
-        <div className="row gap-xs">
-          <button className="btn btn-primary btn-sm add-btn" onClick={() => setAdd({ open: true, fill: null })}>
-            <Icon name="plus" size={16} /> Add recipe
+        <button className="wordmark" onClick={() => go("")} aria-label="Crumb home">
+          <span className="wordmark-title">Crumb's Recipes</span>
+          <span className="wordmark-sub">(saved from Instagram, cooked at home)</span>
+        </button>
+        <div className="topbar-stickers">
+          <button className="settings-link" onClick={() => setSettingsOpen(true)} aria-label="Settings">
+            Settings <span aria-hidden="true">→</span>
           </button>
-          <button className="icon-btn lg" onClick={() => setSettingsOpen(true)} aria-label="Settings" title="Settings">
-            <Icon name="gear" />
-          </button>
+          <CircleBadge
+            className="add-btn"
+            text="ADD A RECIPE · ADD A RECIPE · "
+            center={<Icon name="plus" size={26} />}
+            onClick={() => setAdd({ open: true, fill: null })}
+            aria-label="Add recipe"
+          />
+          <BlobButton
+            className={`fav-blob ${filters.favourites ? "on" : ""}`}
+            onClick={() => {
+              setFilters({ ...filters, favourites: !filters.favourites });
+              go("");
+            }}
+            aria-pressed={filters.favourites}
+          >
+            Favourites
+          </BlobButton>
         </div>
       </header>
       <main className="main">{body}</main>

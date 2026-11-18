@@ -108,7 +108,7 @@ const SYNONYMS: Record<string, string> = {
 const DESCRIPTORS =
   /\b(fresh|freshly|finely|roughly|thinly|chopped|diced|minced|sliced|grated|crushed|ground|cubed|peeled|large|medium|small|ripe|boiled|cooked|softened|melted|chilled|cold|warm|hot|lukewarm|thick|thin|toasted|roasted|optional|to taste|as needed|as required|for garnish|organic|heaped|level|packed|about|approx\.?)\b/gi;
 
-const UNITS =
+export const UNITS =
   /^(cups?|c|tbsp|tbs|tablespoons?|tsp|teaspoons?|g|grams?|gm|gms|kg|kilograms?|ml|millilitres?|milliliters?|l|litres?|liters?|oz|ounces?|lbs?|pounds?|pinch(es)?|handful(s)?|cloves?|cans?|tins?|sprigs?|bunch(es)?|pieces?|pcs|inch(es)?|nos?|slices?|sticks?|stalks?|dash(es)?|packets?)\b\.?/i;
 
 /** Turn free text like "1½ cups finely chopped palak" into "spinach". */

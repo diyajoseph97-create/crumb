@@ -85,3 +85,47 @@ export function scaleFactor(original: number | null, desired: number): number {
   if (!original || original <= 0) return 1;
   return desired / original;
 }
+
+// ---------- Splitting a line into quantity + ingredient ----------
+import { UNITS } from "./synonyms";
+
+const AMOUNT_RE = new RegExp(String.raw`^\s*(${AMOUNT}(?:\s*(?:-|–|to)\s*${AMOUNT})?)\s*`);
+const SOFT_QTY = /^(a\s+(?:pinch|handful|dash|few|little|bunch|sprig)(?:es)?(?:\s+of)?|pinch(?:es)?\s+of|a\s+few|few|some|handful\s+of)\s+/i;
+const TRAILING_QTY = /[,\s]*\(?\b(to taste|as needed|as required|for garnish|for frying|optional|as per taste)\b\)?\s*$/i;
+
+/** "200 g paneer, cubed" -> { qty: "200 g", name: "Paneer, cubed" }. No amount -> qty "". */
+export function splitIngredient(text: string): { qty: string; name: string } {
+  let rest = text.trim();
+  let qty = "";
+  const m = rest.match(AMOUNT_RE);
+  if (m) {
+    qty = m[1].trim();
+    rest = rest.slice(m[0].length);
+    const u = rest.match(UNITS);
+    if (u) {
+      qty += " " + u[0].trim();
+      rest = rest.slice(u[0].length);
+    }
+    // "1 can (400 g) tomatoes" keeps the size note with the quantity
+    const paren = rest.match(/^\s*(\([^)]*\))\s*/);
+    if (paren) {
+      qty += " " + paren[1];
+      rest = rest.slice(paren[0].length);
+    }
+    rest = rest.replace(/^\s*of\s+/i, "");
+  } else {
+    const soft = rest.match(SOFT_QTY);
+    if (soft) {
+      qty = soft[0].trim().replace(/\s+of$/i, "").toLowerCase();
+      rest = rest.slice(soft[0].length);
+    }
+  }
+  const tail = rest.match(TRAILING_QTY);
+  if (tail && rest.length > tail[0].length) {
+    qty = qty ? `${qty}, ${tail[1]}` : tail[1];
+    rest = rest.slice(0, rest.length - tail[0].length);
+  }
+  rest = rest.trim().replace(/^[,\-–]\s*/, "");
+  const name = rest ? rest[0].toUpperCase() + rest.slice(1) : text.trim();
+  return { qty, name };
+}

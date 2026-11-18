@@ -2,9 +2,8 @@
 import { useState } from "react";
 import type { Recipe } from "@/lib/types";
 import { formatMinutes, missingParts, isIncomplete, totalIsPartial, totalMinutes } from "@/lib/recipe-utils";
-import { scaleFactor, scaleLine, formatAmount } from "@/lib/scale";
+import { scaleFactor, scaleLine, formatAmount, splitIngredient } from "@/lib/scale";
 import { ConfirmDialog, Doodle, Icon } from "./ui";
-import { Dish } from "./Porcelain";
 import { RecipeImage } from "./RecipeImage";
 
 type Props = {
@@ -144,17 +143,22 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
             <p className="muted">No ingredients yet.</p>
           ) : (
             <ul className="ing-grid">
-              {lines.map((l, i) => (
-                <li key={l.id} className={l.scaled.status === "scaled" ? "is-scaled" : ""}>
-                  <Dish i={i} className="ing-dish" />
-                  <span className="ing-text">{l.scaled.text}</span>
-                  {l.scaled.status === "unscalable" && (
-                    <span className="unscaled" title="Couldn't read this amount reliably, so it's shown as originally written">
-                      not scaled
+              {lines.map((l) => {
+                const { qty, name } = splitIngredient(l.scaled.text);
+                return (
+                  <li key={l.id} className={l.scaled.status === "scaled" ? "is-scaled" : ""}>
+                    <span className="ing-name">{name}</span>
+                    <span className="ing-qty">
+                      {qty}
+                      {l.scaled.status === "unscalable" && (
+                        <span className="unscaled" title="Couldn't read this amount reliably, so it's shown as originally written">
+                          not scaled
+                        </span>
+                      )}
                     </span>
-                  )}
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
           {unscalable > 0 && (

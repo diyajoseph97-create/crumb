@@ -60,14 +60,3 @@ export const NUTRITION_THRESHOLDS = {
 };
 
 /** Each meal type gets a brand colour + doodle for placeholders and shortcuts. */
-export const MEAL_STYLE: Record<string, { colour: string; doodle: string }> = {
-  Breakfast: { colour: "butter", doodle: "egg" },
-  Brunch: { colour: "tangerine", doodle: "egg" },
-  Lunch: { colour: "cobalt", doodle: "bowl" },
-  Dinner: { colour: "tomato", doodle: "pot" },
-  Snacks: { colour: "tangerine", doodle: "chilli" },
-  Appetisers: { colour: "butter", doodle: "leaf" },
-  Desserts: { colour: "tomato", doodle: "swirl" },
-  Drinks: { colour: "cobalt", doodle: "cup" },
-  Sides: { colour: "butter", doodle: "leaf" },
-};

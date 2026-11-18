@@ -1,4 +1,3 @@
-"use client";
 // Home page, after kamalasrecipes.com: a butter-yellow welcome panel with a
 // script accent, a scrolling ribbon, underlined dropdown filters, and a grid
 // of large-photo recipe cards.

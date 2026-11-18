@@ -1,8 +1,7 @@
-"use client";
 import { useEffect, useRef, useState } from "react";
 import { canInstall, isInstalled, lastShareReceipt, onInstallChange, promptInstall, type ShareReceipt } from "@/lib/share";
 import { downloadBackup, getGeminiKey, restoreBackup, setGeminiKey } from "@/lib/local-store";
-import { Doodle, Icon, Logo } from "./ui";
+import { Doodle, Icon } from "./ui";
 
 function KeyField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
@@ -32,7 +31,6 @@ export function Welcome({ onDone }: { onDone: () => void }) {
   return (
     <main className="unlock">
       <form className="unlock-card setup-card" onSubmit={submit}>
-        <Logo />
         <Doodle name="pot" className="add-doodle" />
         <h1 className="h-display h-md">Welcome to Crumb</h1>
         <p className="muted">Drop in a downloaded Reel and Crumb turns it into a tidy recipe. To read the videos it needs a free Gemini key. This is the only setup.</p>

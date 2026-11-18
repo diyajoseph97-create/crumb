@@ -1,5 +1,4 @@
-"use client";
-import { useState } from "react";
+import { memo, useState } from "react";
 import type { Recipe } from "@/lib/types";
 import { formatMinutes, isIncomplete, isYouTube, totalMinutes } from "@/lib/recipe-utils";
 import type { ImportJob } from "@/lib/importer";
@@ -7,7 +6,10 @@ import { Plate } from "./Porcelain";
 import { Icon } from "./ui";
 import { RecipeImage } from "./RecipeImage";
 
-export function RecipeCard({
+// Cards only re-draw when their own recipe changes (not on every toast or new recipe).
+export const RecipeCard = memo(RecipeCardView, (a, b) => a.recipe === b.recipe);
+
+function RecipeCardView({
   recipe, onOpen, onFavourite,
 }: { recipe: Recipe; onOpen: () => void; onFavourite: () => void }) {
   const total = totalMinutes(recipe);

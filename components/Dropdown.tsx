@@ -1,4 +1,3 @@
-"use client";
 // Underlined dropdown filter ("All times ▾") with multi-select checkboxes.
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "./ui";

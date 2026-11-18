@@ -87,14 +87,12 @@ export function instagramShortcode(url: string): string | null {
     return null;
   }
 }
-export const sourceKey = instagramShortcode;
 
 export function canonicalInstagramUrl(key: string) {
   if (key.startsWith("yt:")) return `https://www.youtube.com/watch?v=${key.slice(3)}`;
   if (key.startsWith("share/")) return `https://www.instagram.com/${key}/`;
   return `https://www.instagram.com/reel/${key}/`;
 }
-export const canonicalSourceUrl = canonicalInstagramUrl;
 
 export const isYouTube = (urlOrKey: string | null | undefined) =>
   Boolean(urlOrKey && (urlOrKey.startsWith("yt:") || /youtu\.?be/i.test(urlOrKey)));
@@ -103,8 +101,6 @@ export const youtubeVideoId = (urlOrKey: string | null | undefined): string | nu
   const k = urlOrKey.startsWith("yt:") ? urlOrKey : instagramShortcode(urlOrKey);
   return k && k.startsWith("yt:") ? k.slice(3) : null;
 };
-/** "Reel" or "YouTube video", for buttons and messages. */
-export const sourceNoun = (url: string | null | undefined) => (isYouTube(url) ? "YouTube video" : "Reel");
 
 /** Finds an Instagram or YouTube link inside any text. */
 export const SOURCE_LINK =

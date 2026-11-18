@@ -1,4 +1,3 @@
-"use client";
 // Hand-drawn blue-and-white porcelain: plates, a bowl, chopsticks and a wave
 // border. A small SVG filter gives the lines a slightly wobbly, inked feel and a
 // soft wash fills the plates like watercolour.
@@ -154,20 +153,3 @@ export function TableScene({ className = "" }: { className?: string }) {
   );
 }
 
-/** Blue double rule with a wave between (section divider). */
-export function WaveBand({ className = "" }: { className?: string }) {
-  return (
-    <div className={`wave-band ${className}`} aria-hidden="true">
-      <svg width="100%" height="22" preserveAspectRatio="none">
-        <defs>
-          <pattern id="wave-pat" width="48" height="22" patternUnits="userSpaceOnUse">
-            <path d="M0 11 Q12 5 24 11 T48 11" fill="none" stroke="var(--porcelain)" strokeWidth="1.6" />
-          </pattern>
-        </defs>
-        <rect x="0" y="1" width="100%" height="2.5" fill="var(--porcelain)" />
-        <rect x="0" y="0" width="100%" height="22" fill="url(#wave-pat)" />
-        <rect x="0" y="18.5" width="100%" height="2.5" fill="var(--porcelain)" />
-      </svg>
-    </div>
-  );
-}

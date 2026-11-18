@@ -1,4 +1,3 @@
-"use client";
 import { useRef, useState } from "react";
 import type { Ingredient, Nutrition, RecipeDraft } from "@/lib/types";
 import { CUISINES, MEALS, TAGS } from "@/lib/constants";
@@ -6,7 +5,6 @@ import { canonicalise, displayName, normaliseName } from "@/lib/synonyms";
 import { instagramShortcode, newId } from "@/lib/recipe-utils";
 import { resizeImage } from "@/lib/image";
 import { Icon, ToggleChip } from "./ui";
-import { useImageSrc } from "./RecipeImage";
 
 type Props = {
   initial: RecipeDraft;
@@ -33,7 +31,7 @@ export function RecipeEditor({ initial, title, onCancel, onSave, uploadImage }: 
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const photoSrc = useImageSrc(d.imageUrl);
+  const photoSrc = d.imageUrl;
 
   const set = (patch: Partial<RecipeDraft>) => setD((x) => ({ ...x, ...patch }));
   const n: Nutrition = d.nutrition ?? { calories: null, protein: null, carbs: null, fat: null, fibre: null };

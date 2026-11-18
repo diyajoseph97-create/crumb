@@ -1,4 +1,3 @@
-"use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Recipe, RecipeDraft } from "@/lib/types";
 import type { Store } from "@/lib/store";
@@ -9,6 +8,7 @@ import { RecipeDetail } from "./RecipeDetail";
 import { RecipeEditor } from "./RecipeEditor";
 import { AddRecipeModal, IG_LINK } from "./AddRecipeModal";
 import { takeShared } from "@/lib/share";
+import { compactPhoto } from "@/lib/image";
 import { newJob, runImport, type ImportInput, type ImportJob } from "@/lib/importer";
 import { isSavedForLater, isYouTube } from "@/lib/recipe-utils";
 import { Doodle, Icon, Modal } from "./ui";
@@ -124,6 +124,36 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
   useEffect(() => {
     if (reloadToken) load();
   }, [reloadToken, load]);
+
+  // One-time tidy-up: older photos were saved large; shrink them quietly when the browser is idle.
+  useEffect(() => {
+    const FLAG = "crumb-photos-compacted-v1";
+    if (loading || recipes.length === 0) return;
+    try {
+      if (localStorage.getItem(FLAG)) return;
+    } catch {
+      return;
+    }
+    let cancelled = false;
+    const big = recipes.filter((r) => r.imageUrl?.startsWith("data:image/") && r.imageUrl.length > 150_000);
+    const idle = (fn: () => void) => ("requestIdleCallback" in window ? (window as any).requestIdleCallback(fn, { timeout: 3000 }) : setTimeout(fn, 500));
+    const next = (i: number) => {
+      if (cancelled) return;
+      if (i >= big.length) {
+        try { localStorage.setItem(FLAG, "1"); } catch {}
+        return;
+      }
+      idle(async () => {
+        const r = big[i];
+        const smaller = await compactPhoto(r.imageUrl!).catch(() => null);
+        if (smaller && !cancelled) upsert(await store.update(r.id, { imageUrl: smaller }));
+        next(i + 1);
+      });
+    };
+    next(0);
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   const upsert = (r: Recipe) =>
     setRecipes((list) => {

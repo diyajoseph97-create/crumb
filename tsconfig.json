@@ -5,6 +5,7 @@
     "skipLibCheck": true,
     "strict": false,
     "strictNullChecks": true,
+    "noUnusedLocals": true,
     "noEmit": true,
     "module": "esnext",
     "moduleResolution": "bundler",

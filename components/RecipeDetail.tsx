@@ -1,4 +1,3 @@
-"use client";
 // Recipe page laid out like a printed cookbook spread: graph-paper page,
 // ruled boxes, typewriter ingredient list (quantity first), a coloured
 // method panel with "STEP 1." labels, and a footer strip with time & servings.

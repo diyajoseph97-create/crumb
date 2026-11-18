@@ -1,4 +1,3 @@
-"use client";
 import { useMemo, useState } from "react";
 import { CUISINES, MEALS, TAGS, TIME_RANGES } from "@/lib/constants";
 import type { Filters } from "@/lib/filter";

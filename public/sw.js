@@ -18,11 +18,53 @@ function save(item, key = "latest") {
   });
 }
 
+// Offline copy of the app. The build stamps a new version on every deploy.
+const CACHE = "crumb-__BUILD__";
+
 self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
+self.addEventListener("activate", (e) =>
+  e.waitUntil(
+    (async () => {
+      for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k);
+      await self.clients.claim();
+    })(),
+  ),
+);
+
+// Page: try the network first (so updates show up), but don't wait more than
+// 3 s on a weak connection; use the saved copy then, or when offline.
+async function page(request) {
+  const cache = await caches.open(CACHE);
+  const fresh = fetch(request).then((res) => {
+    if (res.ok) cache.put("./", res.clone());
+    return res;
+  });
+  const timeout = new Promise((r) => setTimeout(r, 3000, null));
+  try {
+    const res = await Promise.race([fresh, timeout]);
+    if (res) return res;
+  } catch {}
+  return (await cache.match("./")) || fresh;
+}
+
+// Fonts and icons never change name, so the saved copy is always right.
+async function asset(request) {
+  const cache = await caches.open(CACHE);
+  const hit = await cache.match(request);
+  if (hit) return hit;
+  const res = await fetch(request);
+  if (res.ok) cache.put(request, res.clone());
+  return res;
+}
 
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
+  const inScope = url.origin === location.origin && url.pathname.startsWith(new URL(self.registration.scope).pathname);
+  if (event.request.method === "GET" && inScope) {
+    if (event.request.mode === "navigate") return event.respondWith(page(event.request));
+    if (/\/(fonts|icons)\//.test(url.pathname)) return event.respondWith(asset(event.request));
+    return;
+  }
   if (event.request.method !== "POST" || !url.pathname.endsWith("/share-target")) return;
   event.respondWith(
     (async () => {

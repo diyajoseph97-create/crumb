@@ -1,4 +1,3 @@
-"use client";
 import React, { useEffect, useRef } from "react";
 import { Dish } from "./Porcelain";
 
@@ -55,15 +54,6 @@ export function Doodle({ name, className = "" }: { name: string; className?: str
 }
 
 // ---------- Wordmark: "crumb" in an outlined pill ----------
-export function Logo({ onClick }: { onClick?: () => void }) {
-  return (
-    <button className="logo" onClick={onClick} aria-label="Crumb home">
-      <span className="logo-word">crumb</span>
-      <span className="logo-dot" aria-hidden="true" />
-    </button>
-  );
-}
-
 // ---------- Modal / sheet ----------
 export function Modal({
   open, onClose, children, label, variant = "dialog",
@@ -128,10 +118,3 @@ export function ToggleChip({
   );
 }
 
-export function Sticker({ children, tone = "butter", tilt = 0 }: { children: React.ReactNode; tone?: string; tilt?: number }) {
-  return (
-    <span className={`sticker tone-${tone}`} style={{ transform: `rotate(${tilt}deg)` }}>
-      {children}
-    </span>
-  );
-}

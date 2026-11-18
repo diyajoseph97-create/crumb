@@ -1,4 +1,3 @@
-"use client";
 // Sticker-style buttons and the scrolling ribbon used in the header and home page.
 import React from "react";
 

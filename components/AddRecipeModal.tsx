@@ -1,6 +1,5 @@
-"use client";
 import { useEffect, useRef, useState } from "react";
-import type { ImportResult, Recipe, RecipeDraft } from "@/lib/types";
+import type { ImportResult, Recipe } from "@/lib/types";
 import type { Store } from "@/lib/store";
 import { canonicalInstagramUrl, emptyDraft, instagramShortcode, isSavedForLater, isYouTube, SOURCE_LINK } from "@/lib/recipe-utils";
 import type { ImportInput } from "@/lib/importer";

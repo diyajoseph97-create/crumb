@@ -1,4 +1,6 @@
-// Grabs one frame from a video file as a JPEG, used as the recipe photo
+import { drawFrame } from "./image";
+
+// Grabs one frame from a video file as a small photo, used as the recipe photo
 // (the AI picks the moment that best shows the finished dish).
 export async function captureFrame(file: File, seconds: number): Promise<string | null> {
   const url = URL.createObjectURL(file);
@@ -19,14 +21,7 @@ export async function captureFrame(file: File, seconds: number): Promise<string 
       video.onseeked = () => res();
       setTimeout(() => rej(new Error("timeout")), 15000);
     });
-    const max = 1600;
-    const scale = Math.min(1, max / Math.max(video.videoWidth, video.videoHeight));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(video.videoWidth * scale);
-    canvas.height = Math.round(video.videoHeight * scale);
-    if (!canvas.width || !canvas.height) return null;
-    canvas.getContext("2d")!.drawImage(video, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL("image/jpeg", 0.85);
+    return drawFrame(video);
   } catch {
     return null;
   } finally {

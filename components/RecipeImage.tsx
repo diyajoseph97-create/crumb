@@ -1,31 +1,5 @@
-"use client";
-import { useEffect, useState } from "react";
 import type { Recipe } from "@/lib/types";
 import { Plate, Chopsticks, rimFor } from "./Porcelain";
-
-// Photos stored in your private GitHub repo ("gh:images/…") have to be fetched
-// with your token, so the app registers a resolver at start-up.
-let resolver: ((url: string) => Promise<string>) | null = null;
-const resolved = new Map<string, Promise<string>>();
-export function setImageResolver(fn: ((url: string) => Promise<string>) | null) {
-  resolver = fn;
-  resolved.clear();
-}
-
-export function useImageSrc(url: string | null): string | null {
-  const direct = url && !url.startsWith("gh:") ? url : null;
-  const [src, setSrc] = useState<string | null>(direct);
-  useEffect(() => {
-    if (!url) return setSrc(null);
-    if (!url.startsWith("gh:")) return setSrc(url);
-    if (!resolver) return setSrc(null);
-    let alive = true;
-    if (!resolved.has(url)) resolved.set(url, resolver(url));
-    resolved.get(url)!.then((s) => alive && setSrc(s)).catch(() => alive && setSrc(null));
-    return () => { alive = false; };
-  }, [url]);
-  return src;
-}
 
 const ASPECTS = [1.25, 0.9, 1.1, 1.4, 1, 1.2, 0.85];
 
@@ -36,12 +10,12 @@ function hash(s: string) {
 }
 
 export function RecipeImage({ recipe, variant = "card" }: { recipe: Recipe; variant?: "card" | "hero" }) {
-  const src = useImageSrc(recipe.imageUrl);
+  const src = recipe.imageUrl;
   const h = hash(recipe.id);
   const aspect = ASPECTS[h % ASPECTS.length];
 
   if (recipe.imageUrl && src) {
-    return <img className={`rimg rimg-${variant}`} src={src} alt={recipe.name} loading="lazy" />;
+    return <img className={`rimg rimg-${variant}`} src={src} alt={recipe.name} loading="lazy" decoding="async" />;
   }
   if (recipe.imageUrl && !src) {
     // still loading the photo: keep the space so the gallery doesn't jump

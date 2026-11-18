@@ -130,7 +130,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
         sourceUrl: canonicalInstagramUrl(code),
         sourceShortcode: code,
         originalCaption: caption.trim() || null,
-        importNotes: "Saved for later. Open it from “Saved for later” to read the recipe.",
+        importNotes: "Instagram only shared the link. Download the Reel (⋯ → Download in Instagram), then tap “Fill in from a video” and pick it.",
       });
       onSaved(recipe);
       setPhase({ kind: "done", result: { status: "later", recipe } });
@@ -423,7 +423,8 @@ function Result({ result, filling, onOpen, onClose, onTryAgain }: {
       <div className="result">
         <div className="result-badge tone-butter pop"><Icon name="link" size={26} /></div>
         <h2 className="h-display h-md">Saved for later</h2>
-        <p className="muted">It's waiting in <strong>Saved for later</strong> at the top of your cookbook. Open it when you're ready to read the recipe.</p>
+        <p className="muted">Instagram only shares the link, not the video, so there's no recipe to read yet. It's waiting in <strong>Saved for later</strong>.</p>
+        <p className="muted small">When you're ready: in Instagram, tap <strong>⋯ → Download</strong> on the Reel. Then tap <strong>Read it</strong> on the saved Reel here and pick the video (paste the caption too, it often has the amounts).</p>
         <div className="row gap-sm center">
           <button className="btn btn-primary" onClick={onClose}>Done</button>
         </div>

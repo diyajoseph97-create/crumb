@@ -224,7 +224,7 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
             {categories.length > 0 && <p className="mag-cats">{categories.join(" · ")}</p>}
             <h1 className="mag-title">{r.name || "Untitled recipe"}</h1>
             {r.steps.length === 0 ? (
-              <p className="mag-step-text">No steps yet.</p>
+              <p className="mag-steps mag-step-text">No steps yet.</p>
             ) : (
               <ol className="mag-steps">
                 {r.steps.map((s, i) => (

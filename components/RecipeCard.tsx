@@ -3,7 +3,7 @@ import type { Recipe } from "@/lib/types";
 import { formatMinutes, isIncomplete, isYouTube, totalMinutes } from "@/lib/recipe-utils";
 import type { ImportJob } from "@/lib/importer";
 import { Plate } from "./Porcelain";
-import { Icon } from "./ui";
+import { Icon, useViewOnly } from "./ui";
 import { RecipeImage } from "./RecipeImage";
 
 // Cards only re-draw when their own recipe changes (not on every toast or new recipe).
@@ -14,7 +14,8 @@ function RecipeCardView({
 }: { recipe: Recipe; onOpen: () => void; onFavourite: () => void }) {
   const total = totalMinutes(recipe);
   const tags = [...recipe.tags].slice(0, 2);
-  const incomplete = isIncomplete(recipe);
+  const viewOnly = useViewOnly().on;
+  const incomplete = isIncomplete(recipe) && !viewOnly;
   return (
     <article className="card">
       <button className="card-hit" onClick={onOpen} aria-label={`Open ${recipe.name}`}>
@@ -46,14 +47,14 @@ function RecipeCardView({
           </div>
         </div>
       </button>
-      <button
+      {!viewOnly && <button
         className={`fav-btn ${recipe.favourite ? "on" : ""}`}
         onClick={onFavourite}
         aria-pressed={recipe.favourite}
         aria-label={recipe.favourite ? "Remove from favourites" : "Add to favourites"}
       >
         <Icon name="heart" size={18} filled={recipe.favourite} />
-      </button>
+      </button>}
     </article>
   );
 }

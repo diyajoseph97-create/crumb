@@ -7,7 +7,7 @@ import { CUISINES, TAGS, TIME_RANGES } from "@/lib/constants";
 import { activeFilterCount, allIngredients, applyFilters, EMPTY_FILTERS, type Filters } from "@/lib/filter";
 import { displayName } from "@/lib/synonyms";
 import { isSavedForLater, isYouTube, totalMinutes } from "@/lib/recipe-utils";
-import { Doodle, Icon, Modal } from "./ui";
+import { Doodle, Icon, Modal, useViewOnly } from "./ui";
 import { TableScene } from "./Porcelain";
 import { Dropdown } from "./Dropdown";
 import { Marquee } from "./Stickers";
@@ -102,6 +102,7 @@ function Inbox({ items, onFill, onOpen }: { items: Recipe[]; onFill: (r: Recipe)
 
 export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFavourite, onAdd, onFill, jobs = [], onRetryJob, onDismissJob }: Props) {
   const [sheet, setSheet] = useState(false);
+  const viewOnly = useViewOnly().on;
   const inbox = useMemo(() => all.filter(isSavedForLater), [all]);
   const recipes = useMemo(() => all.filter((r) => !isSavedForLater(r)), [all]);
   const cols = useColumns();
@@ -144,14 +145,26 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
     <div className="home">
       <section className="hero-panel">
         <div className="hero-copy">
-          <p className="hero-kicker">Your little corner of the internet</p>
-          <h1 className="h-display hero-title">
-            All those recipes you saved? <em className="script">They're right here.</em>
-          </h1>
-          <p className="hero-sub">From Instagram, YouTube and everywhere in between. Ready whenever the cooking mood strikes.</p>
+          {viewOnly ? (
+            <>
+              <p className="hero-kicker">Shared with you</p>
+              <h1 className="h-display hero-title">
+                Have a look around. <em className="script">Something's bound to tempt you.</em>
+              </h1>
+              <p className="hero-sub">You can browse, search and open every recipe here. It's view only, so nothing you do changes the cookbook.</p>
+            </>
+          ) : (
+            <>
+              <p className="hero-kicker">Your little corner of the internet</p>
+              <h1 className="h-display hero-title">
+                All those recipes you saved? <em className="script">They're right here.</em>
+              </h1>
+              <p className="hero-sub">From Instagram, YouTube and everywhere in between. Ready whenever the cooking mood strikes.</p>
+            </>
+          )}
           {recipes.length > 0 && (
             <p className="hero-count">
-              {recipes.length} {recipes.length === 1 ? "recipe" : "recipes"} tucked into your cookbook.
+              {recipes.length} {recipes.length === 1 ? "recipe" : "recipes"} {viewOnly ? "in this cookbook." : "tucked into your cookbook."}
             </p>
           )}
         </div>
@@ -236,16 +249,25 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
           )}
         </div>
 
-        {inbox.length > 0 && <Inbox items={inbox} onFill={onFill} onOpen={onOpen} />}
+        {!viewOnly && inbox.length > 0 && <Inbox items={inbox} onFill={onFill} onOpen={onOpen} />}
 
         {!loading && recipes.length === 0 && inbox.length === 0 && jobs.length === 0 && (
           <div className="empty">
             <Doodle name="pot" className="empty-doodle" />
-            <h2 className="h-display">Your cookbook is waiting to be filled.</h2>
-            <p className="muted">That recipe you've been meaning to try? Start here. Save a link and let's give it a home.</p>
-            <button className="btn btn-primary" onClick={onAdd}>
-              <Icon name="plus" size={18} /> Add your first recipe
-            </button>
+            {viewOnly ? (
+              <>
+                <h2 className="h-display">Nothing shared here yet.</h2>
+                <p className="muted">Recipes will show up here once they're added.</p>
+              </>
+            ) : (
+              <>
+                <h2 className="h-display">Your cookbook is waiting to be filled.</h2>
+                <p className="muted">That recipe you've been meaning to try? Start here. Save a link and let's give it a home.</p>
+                <button className="btn btn-primary" onClick={onAdd}>
+                  <Icon name="plus" size={18} /> Add your first recipe
+                </button>
+              </>
+            )}
           </div>
         )}
 

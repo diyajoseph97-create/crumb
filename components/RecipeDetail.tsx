@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import type { Recipe } from "@/lib/types";
 import { formatMinutes, missingParts, isIncomplete, totalIsPartial, totalMinutes } from "@/lib/recipe-utils";
 import { scaleFactor, scaleLine, formatAmount, splitIngredient } from "@/lib/scale";
-import { ConfirmDialog, Doodle, Icon } from "./ui";
+import { ConfirmDialog, Doodle, Icon, useViewOnly } from "./ui";
 import { RecipeImage } from "./RecipeImage";
 
 type Props = {
@@ -23,6 +23,8 @@ type Props = {
   fillJob?: ImportJob | null;
   onRetryFill?: (j: ImportJob) => void;
   hasKey?: boolean;
+  /** Make and send a view-only link to this recipe. */
+  onShare?: () => void;
   /** Fetch healthier-swap ideas if this recipe doesn't have any yet. */
   ensureTips?: (r: Recipe) => Promise<"ok" | "failed" | "skip">;
 };
@@ -32,6 +34,7 @@ function ReelLink({ url, onSetLink }: { url: string | null; onSetLink: (url: str
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const viewOnly = useViewOnly().on;
   if (url) {
     return (
       <a className="reel-link" href={url} target="_blank" rel="noopener noreferrer">
@@ -39,6 +42,7 @@ function ReelLink({ url, onSetLink }: { url: string | null; onSetLink: (url: str
       </a>
     );
   }
+  if (viewOnly) return null;
   if (!editing) {
     return (
       <button className="reel-link add" onClick={() => setEditing(true)}>
@@ -68,7 +72,8 @@ function ReelLink({ url, onSetLink }: { url: string | null; onSetLink: (url: str
 
 const est = (flag: boolean | undefined, v: number | null) => (flag && v != null ? "~" : "");
 
-export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite, onAddScreenshots, onSetLink, fillJob, onRetryFill, hasKey, ensureTips }: Props) {
+export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite, onAddScreenshots, onSetLink, fillJob, onRetryFill, hasKey, ensureTips, onShare }: Props) {
+  const view = useViewOnly();
   const [tipsState, setTipsState] = useState<"idle" | "loading" | "failed">("idle");
   useEffect(() => {
     if (!ensureTips || r.healthTips?.length || !hasKey || r.ingredients.length === 0) return;
@@ -94,20 +99,27 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
   return (
     <article className="detail">
       <div className="detail-top">
-        <button className="btn btn-ghost back-btn" onClick={onBack}>
-          <Icon name="back" size={18} /> All recipes
-        </button>
-        <div className="row gap-xs wrap end">
+        {!view.singleRecipe ? (
+          <button className="btn btn-ghost back-btn" onClick={onBack}>
+            <Icon name="back" size={18} /> All recipes
+          </button>
+        ) : <span />}
+        {view.on ? <span className="view-only-pill">View only</span> : <div className="row gap-xs wrap end">
           <button className={`btn btn-outline btn-sm fav-toggle ${r.favourite ? "on" : ""}`} onClick={onFavourite} aria-pressed={r.favourite}>
             <Icon name="heart" size={15} filled={r.favourite} /> {r.favourite ? "Favourite" : "Add to favourites"}
           </button>
+          {onShare && (
+            <button className="btn btn-outline btn-sm" onClick={onShare} title="Share a view-only link">
+              <Icon name="share" size={15} /> Share
+            </button>
+          )}
           <button className="icon-btn lg" onClick={onEdit} aria-label="Edit recipe" title="Edit">
             <Icon name="edit" />
           </button>
           <button className="icon-btn lg" onClick={() => setConfirm(true)} aria-label="Delete recipe" title="Delete">
             <Icon name="trash" />
           </button>
-        </div>
+        </div>}
       </div>
 
       {fillJob ? (
@@ -128,7 +140,7 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
             )}
           </div>
         </section>
-      ) : incomplete && (
+      ) : incomplete && !view.on && (
         <section className="notice notice-warn">
           <Doodle name="sparkle" className="notice-doodle" />
           <div>
@@ -227,7 +239,7 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
           )}
 
           {/* Like the "my notes" box in a printed cookbook: ideas for a healthier version */}
-          <section className={`mag-notes ${r.healthTips?.length ? "" : "is-empty"}`} aria-label="Make it healthier">
+          {(!view.on || r.healthTips?.length) && <section className={`mag-notes ${r.healthTips?.length ? "" : "is-empty"}`} aria-label="Make it healthier">
             <h2 className="mag-notes-head">Make it healthier</h2>
             {r.healthTips?.length ? (
               <ul className="mag-tips">
@@ -242,7 +254,7 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
             ) : (
               <p>Thinking up some healthier swaps<span className="dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span></p>
             )}
-          </section>
+          </section>}
         </aside>
 
         {/* ---------- Right column: photo, title panel, method ---------- */}

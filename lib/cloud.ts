@@ -215,3 +215,62 @@ export async function pushRows(rows: { id: string; data: any; deleted: boolean; 
     body: JSON.stringify(rows.map((r) => ({ ...r, user_id: s.user_id }))),
   });
 }
+
+// ---------- View-only sharing ----------
+// A share is a long random token saved in your "shares" table. Anyone with the
+// link can call the read-only shared_cookbook() function with that token; it
+// returns your recipes (or one recipe) and nothing else. Nobody can change anything.
+
+export type Share = { token: string; recipe_id: string | null; title: string; created_at: string };
+export type SharedCookbook = { title: string; recipe_id: string | null; recipes: any[] };
+
+const b64url = (s: string) => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const unb64url = (s: string) => decodeURIComponent(escape(atob(s.replace(/-/g, "+").replace(/_/g, "/"))));
+
+function randomToken() {
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/** The link someone else opens. It carries your project address + publishable key (both public) and the share token. */
+export function shareUrl(token: string, recipeId: string | null) {
+  const c = getConfig();
+  if (!c) return "";
+  const code = b64url(JSON.stringify({ u: c.url, k: c.key, t: token }));
+  return `${location.origin}${location.pathname}?s=${code}${recipeId ? `#recipe-${recipeId}` : ""}`;
+}
+export function readShareCode(code: string): { url: string; key: string; token: string } | null {
+  try {
+    const j = JSON.parse(unb64url(code));
+    return j.u && j.k && j.t ? { url: j.u, key: j.k, token: j.t } : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function createShare(recipeId: string | null, title: string): Promise<Share> {
+  const s = getSession();
+  if (!s) throw new CloudError("Not signed in.", 401);
+  const share = { token: randomToken(), recipe_id: recipeId, title: title.trim().slice(0, 80) || "Crumb's Cookbook", user_id: s.user_id };
+  await rest("shares", { method: "POST", headers: { prefer: "return=minimal" }, body: JSON.stringify(share) });
+  return { ...share, created_at: new Date().toISOString() };
+}
+export async function listShares(): Promise<Share[]> {
+  const res = await rest("shares?select=token,recipe_id,title,created_at&order=created_at.desc");
+  return res.json();
+}
+export async function deleteShare(token: string) {
+  await rest(`shares?token=eq.${encodeURIComponent(token)}`, { method: "DELETE", headers: { prefer: "return=minimal" } });
+}
+
+/** For the person you shared with: no sign-in, read-only. Null if the link was turned off. */
+export async function fetchShared(code: { url: string; key: string; token: string }): Promise<SharedCookbook | null> {
+  const res = await fetch(`${code.url}/rest/v1/rpc/shared_cookbook`, {
+    method: "POST",
+    headers: { apikey: code.key, "content-type": "application/json" },
+    body: JSON.stringify({ share_token: code.token }),
+  });
+  if (!res.ok) throw new CloudError(await errorText(res), res.status);
+  const j = await res.json();
+  return j && Array.isArray(j.recipes) ? j : null;
+}

@@ -8,6 +8,7 @@ import { getGeminiKey, LocalStore, requestPersistence } from "@/lib/local-store"
 import { registerServiceWorker } from "@/lib/share";
 import { applySetupCode, takeSessionFromUrl, takeSignInErrorFromUrl } from "@/lib/cloud";
 import { startSync } from "@/lib/sync";
+import { SharedView } from "@/components/SharedView";
 
 const WELCOMED = "crumb-welcomed";
 
@@ -42,8 +43,8 @@ function Root() {
       reloadToken={reloadKey}
       store={LocalStore}
       geminiKey={key || null}
-      renderSettings={(close) => (
-        <SettingsPanel onClose={close} onKeyChange={setKey} onRestored={() => setReloadKey((n) => n + 1)} />
+      renderSettings={(close, recipes) => (
+        <SettingsPanel onClose={close} onKeyChange={setKey} onRestored={() => setReloadKey((n) => n + 1)} recipes={recipes} />
       )}
     />
   );
@@ -52,29 +53,35 @@ function Root() {
 requestPersistence();
 registerServiceWorker();
 
-// Arriving from a sync set-up link (#connect=…) or a sign-in email (#access_token=…).
-function takeLinks(): boolean {
-  let took = false;
-  const setup = location.hash.match(/^#connect=([A-Za-z0-9+/=_-]+)/);
-  if (setup) {
-    if (applySetupCode(setup[1])) sessionStorage.setItem("crumb-just-connected", "1");
-    history.replaceState(null, "", location.pathname + location.search);
-    took = true;
-  }
-  if (takeSessionFromUrl()) {
-    sessionStorage.setItem("crumb-just-signed-in", "1");
-    took = true;
-  }
-  const signInError = takeSignInErrorFromUrl();
-  if (signInError) {
-    sessionStorage.setItem("crumb-sign-in-error", signInError);
-    took = true;
-  }
-  return took;
-}
-takeLinks();
-// Same links opened while Crumb is already open: apply them and start fresh.
-window.addEventListener("hashchange", () => takeLinks() && location.reload());
-startSync();
+// Someone opened a view-only link (?s=…): show that cookbook, nothing else.
+const sharedCode = new URLSearchParams(location.search).get("s");
 
-createRoot(document.getElementById("root")!).render(<Root />);
+if (!sharedCode) {
+  // Arriving from a sync set-up link (#connect=…) or a sign-in email (#access_token=…).
+  function takeLinks(): boolean {
+    let took = false;
+    const setup = location.hash.match(/^#connect=([A-Za-z0-9+/=_-]+)/);
+    if (setup) {
+      if (applySetupCode(setup[1])) sessionStorage.setItem("crumb-just-connected", "1");
+      history.replaceState(null, "", location.pathname + location.search);
+      took = true;
+    }
+    if (takeSessionFromUrl()) {
+      sessionStorage.setItem("crumb-just-signed-in", "1");
+      took = true;
+    }
+    const signInError = takeSignInErrorFromUrl();
+    if (signInError) {
+      sessionStorage.setItem("crumb-sign-in-error", signInError);
+      took = true;
+    }
+    return took;
+  }
+  takeLinks();
+  // Same links opened while Crumb is already open: apply them and start fresh.
+  window.addEventListener("hashchange", () => takeLinks() && location.reload());
+  startSync();
+
+}
+
+createRoot(document.getElementById("root")!).render(sharedCode ? <SharedView code={sharedCode} /> : <Root />);

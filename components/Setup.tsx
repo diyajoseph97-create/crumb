@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import type { Recipe } from "@/lib/types";
+import { getShareTitle, makeShareLink, sendLink, setShareTitle } from "@/lib/sharing";
+import { deleteShare, listShares, shareUrl, type Share } from "@/lib/cloud";
 import { clearConfig, getConfig, getSession, sendSignInEmail, setConfig, setupLink, signOut, verifyCode } from "@/lib/cloud";
 import { getSyncStatus, onSyncStatus, resetSyncState, syncNow, type SyncStatus } from "@/lib/sync";
 import { canInstall, isInstalled, lastShareReceipt, onInstallChange, promptInstall, type ShareReceipt } from "@/lib/share";
@@ -53,7 +56,7 @@ export function Welcome({ onDone }: { onDone: () => void }) {
 }
 
 /** Settings dialog inside the app. */
-export function SettingsPanel({ onClose, onRestored, onKeyChange }: { onClose: () => void; onRestored: () => void; onKeyChange: (k: string) => void }) {
+export function SettingsPanel({ onClose, onRestored, onKeyChange, recipes = [] }: { onClose: () => void; onRestored: () => void; onKeyChange: (k: string) => void; recipes?: Recipe[] }) {
   const [key, setKey] = useState(getGeminiKey());
   const [msg, setMsg] = useState<{ text: string; bad?: boolean } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -88,6 +91,8 @@ export function SettingsPanel({ onClose, onRestored, onKeyChange }: { onClose: (
       </form>
 
       <SyncSection />
+
+      <ShareSection recipes={recipes} />
 
       <section className="settings-section">
         <h3 className="settings-h">Backup</h3>
@@ -259,6 +264,96 @@ function SyncSection() {
       <h3 className="settings-h">Sync across devices</h3>
       {body}
       {msg && <p className={msg.bad ? "form-error" : "form-ok"} role="status">{msg.text}</p>}
+    </section>
+  );
+}
+
+/** View-only links to your cookbook or a recipe. */
+function ShareSection({ recipes }: { recipes: Recipe[] }) {
+  const signedIn = Boolean(getSession());
+  const [title, setTitle] = useState(getShareTitle());
+  const [shares, setShares] = useState<Share[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ text: string; bad?: boolean } | null>(null);
+  const [setupNeeded, setSetupNeeded] = useState(false);
+
+  const refresh = () =>
+    listShares()
+      .then((s) => { setShares(s); setSetupNeeded(false); })
+      .catch((e) => { setShares([]); if (/shares|does not exist|Could not find the table/i.test(String(e?.message))) setSetupNeeded(true); });
+  useEffect(() => {
+    if (signedIn) refresh();
+  }, [signedIn]);
+
+  const send = async (url: string, what: string) => {
+    const res = await sendLink(url, title);
+    if (res === "copied") setMsg({ text: `Link copied. Anyone with it can view ${what}, but not change anything.` });
+    if (res === "failed") setMsg({ text: "Couldn't copy automatically. Select the link below and copy it.", bad: true });
+  };
+
+  if (!signedIn)
+    return (
+      <section className="settings-section">
+        <h3 className="settings-h">Share your cookbook</h3>
+        <p className="muted small">Turn on sync above, then you can share a view-only link to your cookbook or any recipe.</p>
+      </section>
+    );
+
+  const nameOf = (id: string | null) => (id ? recipes.find((r) => r.id === id)?.name ?? "A recipe (since deleted)" : "Whole cookbook");
+  return (
+    <section className="settings-section">
+      <h3 className="settings-h">Share your cookbook</h3>
+      <p className="muted small">Send a link and they can see your recipes, but not change anything. You can turn a link off any time. To share one recipe, use <strong>Share</strong> on its page.</p>
+      <label className="field">
+        <span className="field-label">Name people will see</span>
+        <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => setShareTitle(title)} maxLength={80} />
+      </label>
+      <button
+        className="btn btn-primary btn-sm"
+        disabled={busy}
+        onClick={async () => {
+          setShareTitle(title);
+          setBusy(true);
+          setMsg(null);
+          try {
+            const url = await makeShareLink(null);
+            await refresh();
+            await send(url, "your cookbook");
+          } catch (e) {
+            const m = String((e as Error)?.message);
+            if (/shares|does not exist|Could not find the table/i.test(m)) setSetupNeeded(true);
+            else setMsg({ text: "Couldn't make the link right now. Check your connection and try again.", bad: true });
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <Icon name="share" size={16} /> {busy ? "Making the link…" : "Share a view-only link"}
+      </button>
+      {setupNeeded && (
+        <p className="sync-warn small">Sharing needs one more step in Supabase: run the sharing SQL from Crumb's README in the SQL Editor, then try again.</p>
+      )}
+      {msg && <p className={msg.bad ? "form-error" : "form-ok"} role="status">{msg.text}</p>}
+      {shares && shares.length > 0 && (
+        <ul className="share-list">
+          {shares.map((s) => {
+            const url = shareUrl(s.token, s.recipe_id);
+            return (
+              <li key={s.token}>
+                <div className="share-what">
+                  <strong>{nameOf(s.recipe_id)}</strong>
+                  <span className="muted small">Shared {new Date(s.created_at).toLocaleDateString([], { day: "numeric", month: "short" })}</span>
+                  <input className="share-url" readOnly value={url} onFocus={(e) => (e.target as HTMLInputElement).select()} aria-label="Share link" />
+                </div>
+                <div className="row gap-xs">
+                  <button className="btn btn-outline btn-sm" onClick={() => send(url, s.recipe_id ? "this recipe" : "your cookbook")}>Copy</button>
+                  <button className="btn btn-ghost btn-sm" onClick={async () => { await deleteShare(s.token).catch(() => {}); refresh(); setMsg({ text: "That link no longer works." }); }}>Stop sharing</button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </section>
   );
 }

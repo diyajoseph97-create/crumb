@@ -10,10 +10,11 @@ import { AddRecipeModal, IG_LINK } from "./AddRecipeModal";
 import { takeShared } from "@/lib/share";
 import { compactPhoto } from "@/lib/image";
 import { suggestHealthier } from "@/lib/gemini";
+import { canShare, makeShareLink, sendLink } from "@/lib/sharing";
 import { onRemoteChanges, onSyncStatus, getSyncStatus, type SyncStatus } from "@/lib/sync";
 import { forgetJob, newJob, runImport, saveJob, savedJobs, type ImportInput, type ImportJob } from "@/lib/importer";
 import { isSavedForLater, isYouTube } from "@/lib/recipe-utils";
-import { Doodle, Icon, Modal } from "./ui";
+import { Doodle, Icon, Modal, ViewOnlyContext } from "./ui";
 import { BlobButton, CircleBadge } from "./Stickers";
 
 // Simple page routing using the part of the URL after "#":
@@ -43,9 +44,11 @@ type AppProps = {
   renderSettings: (close: () => void, recipes: Recipe[]) => React.ReactNode;
   /** Change this number to reload the recipe list (e.g. after restoring a backup). */
   reloadToken?: number;
+  /** Someone opened a view-only link: no adding, editing or settings. */
+  viewOnly?: { title: string; singleRecipe: boolean } | null;
 };
 
-export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppProps) {
+export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOnly = null }: AppProps) {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -75,7 +78,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
 
   // Opened from the phone's share menu (Instagram → Share → Crumb).
   const pickUpShare = useCallback(async () => {
-    if (window.location.hash !== "#shared") return false;
+    if (viewOnly || window.location.hash !== "#shared") return false;
     history.replaceState(null, "", window.location.pathname + window.location.search);
     setRoute({ page: "home" });
     const s = await takeShared();
@@ -153,7 +156,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
   // One-time tidy-up: older photos were saved large; shrink them quietly when the browser is idle.
   useEffect(() => {
     const FLAG = "crumb-photos-compacted-v1";
-    if (loading || recipes.length === 0) return;
+    if (viewOnly || loading || recipes.length === 0) return;
     try {
       if (localStorage.getItem(FLAG)) return;
     } catch {
@@ -258,7 +261,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
   // Carry on with recipes that were still being added when Crumb was last closed.
   const resumed = useRef(false);
   useEffect(() => {
-    if (loading || resumed.current) return;
+    if (viewOnly || loading || resumed.current) return;
     resumed.current = true;
     savedJobs().then((saved) => {
       if (!saved.length) return;
@@ -301,6 +304,18 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
       toast(`Deleted “${r.name}”`);
     } catch (e) {
       toast(e instanceof Error ? e.message : "Couldn't delete.");
+    }
+  }
+
+  async function shareRecipe(r: Recipe) {
+    if (!canShare()) return toast("To share a view-only link, turn on sync in Settings first.", { label: "Settings", run: () => setSettingsOpen(true) });
+    try {
+      const url = await makeShareLink(r.id);
+      const res = await sendLink(url, r.name);
+      if (res === "copied") toast("Link copied. Anyone with it can view this recipe, but not change it.");
+      if (res === "failed") toast("Link made, but it couldn't be copied. Find it in Settings → Share your cookbook.");
+    } catch (e) {
+      toast(shareError(e));
     }
   }
 
@@ -374,7 +389,8 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
         onAddScreenshots={() => fillFrom(current)}
         fillJob={jobs.find((j) => j.fillId === current.id) ?? null}
         hasKey={Boolean(geminiKey)}
-        ensureTips={ensureTips}
+        onShare={viewOnly ? undefined : () => shareRecipe(current)}
+        ensureTips={viewOnly ? undefined : ensureTips}
         onRetryFill={(j) => runJob(j)}
         onSetLink={async (url) => {
           const code = instagramShortcode(url);
@@ -394,13 +410,14 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
   }
 
   return (
+    <ViewOnlyContext.Provider value={{ on: Boolean(viewOnly), singleRecipe: viewOnly?.singleRecipe }}>
     <div className="app">
       <header className="topbar">
-        <button className="wordmark" onClick={() => go("")} aria-label="Crumb home">
-          <span className="wordmark-title">Crumb's Cookbook</span>
-          <span className="wordmark-sub">A little home for all your saved recipes.</span>
+        <button className="wordmark" onClick={() => !viewOnly?.singleRecipe && go("")} aria-label="Cookbook home">
+          <span className="wordmark-title">{viewOnly ? viewOnly.title : "Crumb's Cookbook"}</span>
+          <span className="wordmark-sub">{viewOnly ? "Shared with you · view only" : "A little home for all your saved recipes."}</span>
         </button>
-        <div className="topbar-stickers">
+        {!viewOnly && <div className="topbar-stickers">
           <button className="settings-link" onClick={() => setSettingsOpen(true)} aria-label="Settings">
             Settings <span aria-hidden="true">→</span>
             {sync.state === "paused" && <span className="sync-dot" title="Sync paused" aria-label="Sync paused" />}
@@ -422,7 +439,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
           >
             Favourites
           </BlobButton>
-        </div>
+        </div>}
       </header>
       <main className="main">{body}</main>
 
@@ -461,5 +478,13 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
         ))}
       </div>
     </div>
+    </ViewOnlyContext.Provider>
   );
+}
+
+export function shareError(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  if (/shares|relation|does not exist|Could not find the table/i.test(msg)) return "Sharing isn't set up in Supabase yet. Run the sharing SQL (see Settings → Share your cookbook).";
+  if (/Not signed in|JWT/i.test(msg)) return "Sign in to sync in Settings first, then try again.";
+  return "Couldn't make the link right now. Check your connection and try again.";
 }

@@ -6,7 +6,7 @@ import { CrumbApp } from "@/components/CrumbApp";
 import { SettingsPanel, Welcome } from "@/components/Setup";
 import { getGeminiKey, LocalStore, requestPersistence } from "@/lib/local-store";
 import { registerServiceWorker } from "@/lib/share";
-import { applySetupCode, takeSessionFromUrl } from "@/lib/cloud";
+import { applySetupCode, takeSessionFromUrl, takeSignInErrorFromUrl } from "@/lib/cloud";
 import { startSync } from "@/lib/sync";
 
 const WELCOMED = "crumb-welcomed";
@@ -63,6 +63,11 @@ function takeLinks(): boolean {
   }
   if (takeSessionFromUrl()) {
     sessionStorage.setItem("crumb-just-signed-in", "1");
+    took = true;
+  }
+  const signInError = takeSignInErrorFromUrl();
+  if (signInError) {
+    sessionStorage.setItem("crumb-sign-in-error", signInError);
     took = true;
   }
   return took;

@@ -130,6 +130,19 @@ export async function verifyCode(email: string, code: string) {
   return s;
 }
 
+/** If the sign-in link came back with an error (expired, already used…), a plain explanation. */
+export function takeSignInErrorFromUrl(): string | null {
+  const params = new URLSearchParams(location.hash.slice(1) + "&" + location.search.slice(1));
+  const code = params.get("error_code") || params.get("error");
+  if (!code) return null;
+  const desc = (params.get("error_description") || "").replace(/\+/g, " ");
+  history.replaceState(null, "", location.pathname);
+  if (/otp_expired|expired|invalid/i.test(code + desc))
+    return "That sign-in link has expired or was already used. Links work once and only for a short while, so send a new one and open it straight away, in this browser.";
+  if (/access_denied/i.test(code)) return `Supabase didn't allow that sign-in${desc ? ` (${desc})` : ""}. Send a new link and try again.`;
+  return `Sign-in didn't work${desc ? `: ${desc}` : ""}.`;
+}
+
 /** The sign-in link brings you back with the session in the address (#access_token=…). */
 export function takeSessionFromUrl(): boolean {
   const h = location.hash;

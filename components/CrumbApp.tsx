@@ -136,6 +136,8 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
     if (sessionStorage.getItem("crumb-just-signed-in")) {
       sessionStorage.removeItem("crumb-just-signed-in");
       toast("Signed in. Your cookbook will now sync across devices.");
+    } else if (sessionStorage.getItem("crumb-sign-in-error")) {
+      setSettingsOpen(true); // Settings shows what went wrong
     } else if (sessionStorage.getItem("crumb-just-connected")) {
       sessionStorage.removeItem("crumb-just-connected");
       toast("Sync is set up. Sign in to finish.", { label: "Settings", run: () => setSettingsOpen(true) });

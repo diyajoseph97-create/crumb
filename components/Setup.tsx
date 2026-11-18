@@ -177,7 +177,12 @@ function SyncSection() {
   const [code, setCode] = useState("");
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ text: string; bad?: boolean } | null>(null);
+  const [msg, setMsg] = useState<{ text: string; bad?: boolean } | null>(() => {
+    const e = sessionStorage.getItem("crumb-sign-in-error");
+    if (!e) return null;
+    sessionStorage.removeItem("crumb-sign-in-error");
+    return { text: e, bad: true };
+  });
 
   async function run(fn: () => Promise<void>) {
     setBusy(true);

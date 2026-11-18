@@ -18,26 +18,31 @@ function rank(name: string): number | null {
   return m ? parseFloat(m[1]) : null;
 }
 
-async function pickModel(ai: GoogleGenAI, avoid: string[] = []): Promise<string> {
+/** Models this key can use, best first: newest stable Flash models, then Flash-Lite as a backup. */
+let modelListCache: string[] | null = null;
+async function rankedModels(ai: GoogleGenAI): Promise<string[]> {
+  if (modelListCache) return modelListCache;
+  const names: string[] = [];
   try {
-    const names: string[] = [];
     const pager = await ai.models.list({ config: { pageSize: 200 } });
     for await (const m of pager) {
       const ok = !m.supportedActions || m.supportedActions.includes("generateContent");
       if (ok && m.name) names.push(m.name.replace(/^models\//, ""));
     }
-    const stable = names.filter((n) => rank(n) != null && !avoid.includes(n)).sort((a, b) => rank(b)! - rank(a)!);
-    if (stable[0]) return stable[0];
-    // No stable Flash? Take the newest Flash preview that isn't a special-purpose model.
-    const preview = names
-      .filter((n) => /^gemini-[\d.]+-flash(-preview)?(-[\d-]+)?$/.test(n) && !avoid.includes(n))
-      .sort()
-      .reverse();
-    if (preview[0]) return preview[0];
   } catch {
-    /* listing failed: fall back */
+    /* listing failed: use the fallback */
   }
-  return FALLBACK_MODEL;
+  const lite = (n: string) => n.match(/^gemini-(\d+(?:\.\d+)?)-flash-lite$/);
+  const flash = names.filter((n) => rank(n) != null).sort((a, b) => rank(b)! - rank(a)!);
+  const liteList = names.filter((n) => lite(n)).sort((a, b) => parseFloat(lite(b)![1]) - parseFloat(lite(a)![1]));
+  const preview = names.filter((n) => /^gemini-[\d.]+-flash-preview(-[\d-]+)?$/.test(n)).sort().reverse();
+  const list = [...flash, ...preview, ...liteList];
+  modelListCache = list.length ? list : [FALLBACK_MODEL];
+  return modelListCache;
+}
+
+async function pickModel(ai: GoogleGenAI, avoid: string[] = []): Promise<string> {
+  return (await rankedModels(ai)).find((m) => !avoid.includes(m)) ?? FALLBACK_MODEL;
 }
 
 async function currentModel(ai: GoogleGenAI): Promise<string> {
@@ -51,6 +56,11 @@ async function currentModel(ai: GoogleGenAI): Promise<string> {
   } catch {}
   return m;
 }
+
+const msgOf = (e: unknown) => (e instanceof Error ? e.message : String(e));
+/** Google is temporarily overloaded or rate-limiting: worth waiting and trying again. */
+const isBusy = (e: unknown) => /\b(503|500|429)\b|UNAVAILABLE|overloaded|high demand|RESOURCE_EXHAUSTED|INTERNAL|try again later/i.test(msgOf(e));
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const isRetired = (e: unknown) => /no longer available|not found|NOT_FOUND|\b404\b|is not supported for generateContent/i.test(e instanceof Error ? e.message : String(e));
 const INLINE_LIMIT = 14 * 1024 * 1024; // bigger videos are uploaded to Gemini first
@@ -112,7 +122,7 @@ export type ReadInput = {
   files: File[]; // images and/or one video
   text?: string;
   existing?: Recipe; // when filling in an incomplete recipe
-  onStage?: (stage: "upload" | "read") => void;
+  onStage?: (stage: "upload" | "read" | "busy") => void;
 };
 
 export type ReadResult = { draft: Partial<RecipeDraft>; isRecipe: boolean; notes: string; heroFrameSeconds: number | null; usedVideo: boolean };
@@ -121,7 +131,9 @@ function friendlyError(e: unknown): Error {
   const msg = e instanceof Error ? e.message : String(e);
   if (/API key not valid|API_KEY_INVALID|permission|UNAUTHENTICATED|ACCESS_TOKEN_TYPE_UNSUPPORTED|invalid authentication|\b401\b/i.test(msg))
     return new Error("Gemini didn't accept your API key. Check it in Settings, or create a fresh key in AI Studio and paste that.");
-  if (/quota|429|RESOURCE_EXHAUSTED/i.test(msg)) return new Error("Gemini's free limit was reached for now. Try again in a minute.");
+  if (/quota|429|RESOURCE_EXHAUSTED/i.test(msg)) return new Error("Gemini's free limit was reached for now. Your recording is still here. Try again in a minute.");
+  if (/\b(503|500)\b|UNAVAILABLE|overloaded|high demand/i.test(msg))
+    return new Error("Gemini is very busy right now. Crumb retried a few times and tried a backup model. Your recording is still here, so try again in a minute or two.");
   if (/fetch|network/i.test(msg)) return new Error("Couldn't reach Gemini. Check your internet connection.");
   return new Error(`Gemini couldn't read this (${msg.slice(0, 140)}).`);
 }
@@ -181,19 +193,38 @@ export async function readRecipe({ apiKey, files, text, existing, onStage }: Rea
         contents: [{ role: "user", parts }],
         config: { systemInstruction: SYSTEM, responseMimeType: "application/json", responseSchema: SCHEMA as any, temperature: 0 },
       });
-    let model = await currentModel(ai);
-    let res;
-    try {
-      res = await request(model);
-    } catch (e) {
-      if (!isRetired(e)) throw e;
-      // That model was retired: pick another and try once more.
-      model = await pickModel(ai, [model]);
+    // Try the usual model; if Google is busy, wait and retry, then try backup models.
+    const preferred = await currentModel(ai);
+    const tried: string[] = [];
+    let model = preferred;
+    let res: Awaited<ReturnType<typeof request>> | undefined;
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 6 && !res; attempt++) {
       try {
-        localStorage.setItem(MODEL_KEY, model);
-      } catch {}
-      res = await request(model);
+        res = await request(model);
+      } catch (e) {
+        lastError = e;
+        if (isRetired(e)) {
+          // That model was retired: remember the next one instead.
+          tried.push(model);
+          model = await pickModel(ai, tried);
+          try { localStorage.setItem(MODEL_KEY, model); } catch {}
+          continue;
+        }
+        if (!isBusy(e)) throw e;
+        onStage?.("busy");
+        const busyTries = tried.filter((m) => m === model).length;
+        tried.push(model);
+        if (busyTries < 2) {
+          await sleep(busyTries === 0 ? 3000 : 8000); // same model, after a pause
+        } else {
+          const next = await pickModel(ai, [...new Set(tried)]);
+          if (next === model) break;
+          model = next; // switch to a backup model for this recipe
+        }
+      }
     }
+    if (!res) throw lastError;
     const o = JSON.parse(res.text ?? "{}");
     return toResult(o, usedVideo);
   } catch (e) {

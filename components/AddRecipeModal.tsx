@@ -36,6 +36,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
   const [phase, setPhase] = useState<Phase>({ kind: "form" });
   const [error, setError] = useState<string | null>(null);
   const [help, setHelp] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -135,13 +136,17 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
     }
 
     setPhase({ kind: "working", step: 0 });
+    setBusy(false);
     try {
       const result = await readRecipe({
         apiKey: geminiKey,
         files: files.map((f) => f.file),
         text: caption.trim() || fillRecipe?.originalCaption || "",
         existing: fillRecipe ?? undefined,
-        onStage: (s) => setPhase({ kind: "working", step: s === "upload" ? 0 : 1 }),
+        onStage: (s) => {
+          if (s === "busy") return setBusy(true);
+          setPhase({ kind: "working", step: s === "upload" ? 0 : 1 });
+        },
       });
       if (!result.isRecipe && !fillRecipe) {
         setPhase({ kind: "done", result: { status: "error", message: "Gemini couldn't find a recipe in that. Try a recording or screenshots that show the ingredients and method." } });
@@ -329,7 +334,11 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
                 </li>
               ))}
             </ol>
-            <p className="muted small">A minute-long recording usually takes 20–60 seconds. Keep this open.</p>
+            {busy ? (
+              <p className="form-note small">Gemini is busy right now. Crumb is waiting a moment and trying again…</p>
+            ) : (
+              <p className="muted small">A minute-long recording usually takes 20–60 seconds. Keep this open.</p>
+            )}
           </div>
         )}
 

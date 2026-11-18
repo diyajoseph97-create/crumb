@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ImportResult, Recipe, RecipeDraft } from "@/lib/types";
 import type { Store } from "@/lib/store";
-import { canonicalInstagramUrl, emptyDraft, instagramShortcode, isIncomplete } from "@/lib/recipe-utils";
+import { canonicalInstagramUrl, emptyDraft, instagramShortcode, isIncomplete, isSavedForLater } from "@/lib/recipe-utils";
 import { mergeIntoExisting, readRecipe } from "@/lib/gemini";
 import { captureFrame } from "@/lib/video-frame";
 import { Doodle, Icon, Modal } from "./ui";
@@ -31,7 +31,7 @@ type Picked = { file: File; preview: string | null };
 
 const MAX_IMAGES = 8;
 
-export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillRecipe, onSaved, onOpenRecipe, onTypeIn, onOpenSettings, shared }: Props) {
+export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillRecipe: fillProp, onSaved, onOpenRecipe, onTypeIn, onOpenSettings, shared }: Props) {
   const [url, setUrl] = useState("");
   const [files, setFiles] = useState<Picked[]>([]);
   const [caption, setCaption] = useState("");
@@ -43,6 +43,10 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [auto, setAuto] = useState<"read" | "later" | null>(null);
+  // A video for one of the "Saved for later" Reels fills that one in, instead of making a new recipe.
+  const saved = recipes.filter(isSavedForLater).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const [target, setTarget] = useState<string>("new");
+  const fillRecipe = fillProp ?? (target !== "new" ? saved.find((r) => r.id === target) ?? null : null);
 
   useEffect(() => {
     if (!open) return;
@@ -52,12 +56,14 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
     setUrl(shared?.url || "");
     setCaption(shared?.caption || "");
     setAuto(null);
+    setTarget("new");
     if (shared) {
       if (shared.files.length) {
         const dt = new DataTransfer();
         shared.files.forEach((f) => dt.items.add(f));
         addFiles(dt.files);
-        if (geminiKey) setAuto("read");
+        if (!shared.url && saved.length) setTarget(saved[0].id); // ask which saved Reel; don't start yet
+        else if (geminiKey) setAuto("read");
         else setError("To read recipes automatically, add your Gemini key in Settings first.");
       } else if (shared.url && instagramShortcode(shared.url)) {
         setAuto("later");
@@ -253,6 +259,21 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
                   : "Drop in the downloaded Reel, and add its link and caption."}
               </p>
             </div>
+
+            {!fillProp && saved.length > 0 && files.length > 0 && !url && (
+              <label className="field which-reel">
+                <span className="field-label">Which Reel is this video from?</span>
+                <select className="input" value={target} onChange={(e) => setTarget(e.target.value)}>
+                  {saved.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      Saved Reel · {new Date(r.createdAt).toLocaleString([], { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
+                    </option>
+                  ))}
+                  <option value="new">None of these, make a new recipe</option>
+                </select>
+                <span className="hint">Crumb fills in the saved Reel and keeps its link.</span>
+              </label>
+            )}
 
             {!fillRecipe && (
               <label className="field link-field">

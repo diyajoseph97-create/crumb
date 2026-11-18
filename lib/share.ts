@@ -6,6 +6,17 @@ export type Shared = { title: string; text: string; url: string; files: File[] }
 const DB = "crumb-share";
 const STORE = "inbox";
 
+// Some Android apps share files without a type; work it out from the name (default: video).
+const EXT: Record<string, string> = { mp4: "video/mp4", m4v: "video/mp4", mov: "video/quicktime", webm: "video/webm", "3gp": "video/3gpp", mkv: "video/x-matroska", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", heic: "image/heic" };
+function withType(f: File | Blob): File {
+  const name = f instanceof File && f.name ? f.name : "shared";
+  const ok = f.type && /^(video|image)\//.test(f.type);
+  if (f instanceof File && ok) return f;
+  const ext = name.split(".").pop()?.toLowerCase() || "";
+  const type = ok ? f.type : EXT[ext] || "video/mp4";
+  return new File([f], name.includes(".") ? name : `${name}.${type === "video/mp4" ? "mp4" : ext || "bin"}`, { type });
+}
+
 /** Read what was just shared (if anything) and clear it, so it's only used once. */
 export function takeShared(): Promise<Shared | null> {
   return new Promise((resolve) => {
@@ -29,7 +40,7 @@ export function takeShared(): Promise<Shared | null> {
           title: item.title || "",
           text: item.text || "",
           url: item.url || "",
-          files: (item.files || []).map((f) => (f instanceof File ? f : new File([f], "shared", { type: (f as Blob).type }))),
+          files: (item.files || []).map(withType),
         });
       };
       get.onerror = () => resolve(null);

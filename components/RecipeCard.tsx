@@ -21,8 +21,8 @@ function RecipeCardView({
         <div className="card-media">
           <RecipeImage recipe={recipe} />
           {incomplete && (
-            <span className="card-incomplete" title="Some details are missing">
-              <Icon name="pen" size={12} /> Needs details
+            <span className="card-incomplete" title="A few details are missing">
+              <Icon name="pen" size={12} /> Needs a little finishing touch
             </span>
           )}
         </div>
@@ -72,7 +72,7 @@ export function JobCard({ job, onRetry, onDismiss }: { job: ImportJob; onRetry: 
         </div>
       </div>
       <div className="card-body">
-        <h3 className="card-title">{failed ? "Couldn't add this one" : <>Adding recipe<span className="dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span></>}</h3>
+        <h3 className="card-title">{failed ? "Couldn't add this one" : <>Fetching the good stuff<span className="dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span></>}</h3>
         <p className="card-sub">{failed ? job.error : `${from} · you can keep browsing`}</p>
         {failed && (
           <div className="row gap-xs wrap">

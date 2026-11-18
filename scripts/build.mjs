@@ -35,7 +35,7 @@ const html = `<!DOCTYPE html>
 <meta name="robots" content="noindex, nofollow" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="Crumb" />
-<title>Crumb</title>
+<title>Crumb's Cookbook</title>
 <link rel="preload" href="fonts/fraunces-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="icon" href="data:image/svg+xml,${encodeURIComponent(icon)}" />
 <style>${css}</style>

@@ -99,7 +99,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
     const canReadNow = Boolean(geminiKey) && ((share.files.length > 0 && (code || !waiting)) || (share.files.length === 0 && isYouTube(code)));
     if (canReadNow) {
       const dup = code ? recipes.find((r) => r.sourceShortcode === code) : undefined;
-      if (dup) return toast("Already in your cookbook", { label: "View", run: () => go(`recipe-${dup.id}`) });
+      if (dup) return toast("Looks like you've already saved this one.", { label: "Open saved recipe", run: () => go(`recipe-${dup.id}`) });
       queue({ files: share.files, caption: share.caption, code, fillId: null });
       return;
     }
@@ -177,7 +177,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
         const recipe = await runImport(job, { apiKey: geminiKey, store, existing });
         setJobs((js) => js.filter((j) => j.id !== job.id));
         upsert(recipe);
-        toast(existing ? `Filled in “${recipe.name}”` : `Added “${recipe.name}”`, { label: "View", run: () => go(`recipe-${recipe.id}`) });
+        toast(existing ? `“${recipe.name}” is all filled in!` : "One more recipe safely tucked away!", { label: "View recipe", run: () => go(`recipe-${recipe.id}`) });
       } catch (e) {
         const message = e instanceof Error ? e.message : "Something went wrong.";
         setJobs((js) => js.map((j) => (j.id === job.id ? { ...j, status: "failed", error: message } : j)));
@@ -324,8 +324,8 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
     <div className="app">
       <header className="topbar">
         <button className="wordmark" onClick={() => go("")} aria-label="Crumb home">
-          <span className="wordmark-title">Crumb's Recipes</span>
-          <span className="wordmark-sub">(saved from Instagram &amp; YouTube, cooked at home)</span>
+          <span className="wordmark-title">Crumb's Cookbook</span>
+          <span className="wordmark-sub">A little home for all your saved recipes.</span>
         </button>
         <div className="topbar-stickers">
           <button className="settings-link" onClick={() => setSettingsOpen(true)} aria-label="Settings">

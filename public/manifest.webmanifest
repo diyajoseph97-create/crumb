@@ -1,7 +1,7 @@
 {
-  "name": "Crumb's Recipes",
+  "name": "Crumb's Cookbook",
   "short_name": "Crumb",
-  "description": "Your saved Instagram recipes, organised.",
+  "description": "A little home for all your saved recipes.",
   "id": "./",
   "start_url": "./",
   "scope": "./",

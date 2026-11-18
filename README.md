@@ -1,6 +1,6 @@
 # Crumb
 
-A personal digital cookbook. Add an Instagram Reel or a YouTube video and Crumb turns it into a tidy, searchable recipe.
+Crumb's Cookbook: a little home for all your saved recipes. Add an Instagram Reel or a YouTube video and Crumb turns it into a tidy, searchable recipe.
 
 **Open it:** https://diyajoseph97-create.github.io/crumb/
 
@@ -13,7 +13,7 @@ A personal digital cookbook. Add an Instagram Reel or a YouTube video and Crumb 
 Open Crumb and paste a free **Gemini API key** from **aistudio.google.com/apikey** (keys start with `AQ.` or `AIza`). You can also skip it and type recipes in yourself.
 
 ## Adding a recipe
-- **YouTube:** paste the link and click **Add recipe**.
+- **YouTube:** paste the link and click **Save to Crumb**.
 - **Instagram:** download the Reel, drop it in, and add its link and caption (the caption usually has the amounts).
 - It's added in the background: an "Adding recipe…" card appears and becomes the recipe when ready.
 - **On Android:** install Crumb from Chrome (⋮ → Install app) and share Reels, videos or YouTube links to it.

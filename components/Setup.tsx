@@ -77,7 +77,8 @@ export function SettingsPanel({ onClose, onRestored, onKeyChange }: { onClose: (
 
   return (
     <div className="settings">
-      <h2 className="h-display h-md">Settings</h2>
+      <h2 className="h-display h-md">A few little things.</h2>
+      <p className="settings-intro">Make Crumb feel like your cookbook.</p>
 
       <form className="settings-section col gap-sm" onSubmit={saveKey}>
         <KeyField value={key} onChange={(v) => { setKey(v); setMsg(null); }} />

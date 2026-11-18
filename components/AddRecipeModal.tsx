@@ -139,7 +139,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
         originalCaption: caption.trim() || null,
         importNotes: isYouTube(code)
           ? "Saved for later. Tap “Read it” and Crumb watches the YouTube video for you."
-          : "Instagram only shared the link. Download the Reel (⋯ → Download in Instagram), then tap “Fill in from a video” and pick it.",
+          : "Instagram only shared the link. Download the Reel (⋯ → Download in Instagram), then tap “Add the video or screenshots” and pick it.",
       });
       onSaved(recipe);
       onClose();
@@ -163,8 +163,10 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
         return;
       }
     }
+    // Just an Instagram link (nothing to read yet), or no key: keep the link for later.
+    if (code && !fillRecipe && (!hasMaterial || !geminiKey)) return saveForLater();
     if (!hasMaterial) {
-      setError("Add a YouTube link, the downloaded Reel, screenshots, or paste the caption.");
+      setError("Paste a link, or add the downloaded video or screenshots.");
       return;
     }
 
@@ -181,7 +183,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
   const images = files.filter((f) => f.file.type.startsWith("image/"));
 
   return (
-    <Modal open={open} onClose={onClose} label={fillRecipe ? "Fill in recipe" : "Add a recipe"}>
+    <Modal open={open} onClose={onClose} label={fillRecipe ? "Fill in the missing bits" : "Add a recipe"}>
       <div className="add">
         <button className="icon-btn modal-close" onClick={onClose} aria-label="Close">
           <Icon name="x" />
@@ -197,11 +199,11 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
           >
             <div className="add-head">
               <Doodle name="pot" className="add-doodle" />
-              <h2 className="h-display h-md">{fillRecipe ? "Fill in the gaps" : "Add a recipe"}</h2>
+              <h2 className="h-display h-md">{fillRecipe ? "Fill in the missing bits" : "Found something delicious?"}</h2>
               <p className="muted">
                 {fillRecipe
                   ? `Add a recording, screenshots or the caption of “${fillRecipe.name}”. Crumb fills in what's missing and keeps what you have.`
-                  : "Paste a YouTube link, or drop in a downloaded Reel with its link and caption."}
+                  : "Save it here before it gets lost in your feed."}
               </p>
             </div>
 
@@ -223,11 +225,11 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
             {!fillRecipe && (
               <label className="field link-field">
                 <span className="field-label">
-                  Instagram or YouTube link
+                  Recipe link
                 </span>
                 <span className={`link-input ${url && !code ? "bad" : ""}`}>
                   <Icon name="link" size={16} />
-                  <input type="url" inputMode="url" value={url} onChange={(e) => setUrl(e.target.value.trim())} placeholder="Paste a Reel or YouTube link (Share → Copy link)" />
+                  <input type="url" inputMode="url" value={url} onChange={(e) => setUrl(e.target.value.trim())} placeholder="Paste an Instagram or YouTube link..." />
                   {code && <Icon name="check" size={16} className="link-ok" />}
                 </span>
                 {url && !code && <span className="hint bad">That doesn't look like an Instagram Reel or YouTube link.</span>}
@@ -286,11 +288,11 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
                 <li><strong>YouTube:</strong> the link is all you need.</li>
                 <li><strong>Add the link</strong> so you can rewatch the original and Crumb can warn you about duplicates.</li>
                 <li><strong>Paste the caption too.</strong> Most creators put the ingredient amounts there, and a downloaded video doesn't include it.</li>
-                <li><strong>No time now?</strong> Paste just the link and choose <em>Save for later</em>.</li>
+                <li><strong>Only have an Instagram link?</strong> Save it now and add the downloaded video later.</li>
               </ul>
             )}
 
-            {!geminiKey && hasMaterial && (
+            {!geminiKey && (files.length > 0 || caption.trim().length > 0) && (
               <p className="form-note">
                 Adding recipes from videos needs your key. <button type="button" className="link-btn" onClick={onOpenSettings}>Add it in Settings</button>
               </p>
@@ -298,23 +300,15 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
             {error && <p className="form-error" role="alert">{error}</p>}
 
             <div className="add-actions">
-              {code && !fillRecipe && (
-                <button type="button" className={`btn ${hasMaterial ? "btn-outline" : "btn-primary"} btn-lg`} onClick={saveForLater}>
-                  <Icon name="link" size={18} /> Save for later
+              {!fillRecipe && (
+                <button type="button" className="btn btn-outline btn-lg" onClick={onTypeIn}>
+                  <Icon name="edit" size={18} /> I'll add it manually
                 </button>
               )}
-              {(hasMaterial || !code || fillRecipe) && (
-                <button type="submit" className="btn btn-primary btn-lg grow" disabled={!hasMaterial}>
-                  <Icon name="plus" size={18} /> {fillRecipe ? "Fill in recipe" : "Add recipe"}
-                </button>
-              )}
+              <button type="submit" className="btn btn-primary btn-lg grow" disabled={!hasMaterial && !code}>
+                <Icon name="plus" size={18} /> {fillRecipe ? "Fill in the missing bits" : "Save to Crumb"}
+              </button>
             </div>
-
-            {!fillRecipe && (
-              <p className="add-alt">
-                Rather type it? <button type="button" className="link-btn" onClick={onTypeIn}>Add it by hand</button>
-              </p>
-            )}
           </form>
         )}
 
@@ -336,11 +330,11 @@ function Result({ result, onOpen, onClose }: { result: ImportResult; onOpen: (id
   return (
     <div className="result">
       <div className="result-badge tone-butter"><Icon name="heart" size={26} filled /></div>
-      <h2 className="h-display h-md">Already in your cookbook!</h2>
-      <p className="muted">You saved “{result.recipe.name}” from this video before, so Crumb didn't add a second copy.</p>
+      <h2 className="h-display h-md">Looks like you've already saved this one.</h2>
+      <p className="muted">It's in your cookbook as “{result.recipe.name}”.</p>
       <div className="row gap-sm center">
         <button className="btn btn-ghost" onClick={onClose}>Close</button>
-        <button className="btn btn-primary" onClick={() => onOpen(result.recipe.id)}>Open recipe</button>
+        <button className="btn btn-primary" onClick={() => onOpen(result.recipe.id)}>Open saved recipe</button>
       </div>
     </div>
   );

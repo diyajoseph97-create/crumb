@@ -121,15 +121,15 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
         <section className="notice notice-warn">
           <Doodle name="sparkle" className="notice-doodle" />
           <div>
-            <h2 className="notice-title">This recipe needs a few details</h2>
+            <h2 className="notice-title">We got some of it! A few details need your help.</h2>
             {missing.length > 0 && <p>Missing: {missing.join(", ")}.</p>}
             {r.importNotes && <p className="muted">{r.importNotes}</p>}
             <div className="row gap-sm wrap">
-              <button className="btn btn-primary btn-sm" onClick={onAddScreenshots}>
-                <Icon name="play" size={16} /> {isYouTube(r.sourceShortcode) ? "Fill in from the YouTube video" : "Fill in from a video or screenshots"}
+              <button className="btn btn-primary btn-sm" onClick={onEdit}>
+                <Icon name="edit" size={16} /> Fill in the missing bits
               </button>
-              <button className="btn btn-outline btn-sm" onClick={onEdit}>
-                <Icon name="edit" size={16} /> Fill in by hand
+              <button className="btn btn-outline btn-sm" onClick={onAddScreenshots}>
+                <Icon name="play" size={16} /> {isYouTube(r.sourceShortcode) ? "Read the YouTube video" : "Add the video or screenshots"}
               </button>
             </div>
           </div>

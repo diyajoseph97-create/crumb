@@ -136,6 +136,7 @@ kbd { font-family: var(--font-type); font-size: 13px; padding: 0 5px; border-rad
 .hero-title { font-family: var(--font-body); font-weight: 500; font-size: clamp(34px, 4.2vw, 54px); line-height: 1.12; letter-spacing: -0.02em; max-width: 15ch; }
 .hero-title .script { font-size: 1.04em; display: inline-block; }
 .hero-sub { margin: 18px 0 0; font-size: 17px; max-width: 42ch; }
+.hero-count { margin: 14px 0 0; font-family: var(--font-cond); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; font-size: 15px; }
 .hero-art { max-width: 420px; justify-self: end; width: 100%; }
 
 /* Coral ribbon */
@@ -165,7 +166,7 @@ kbd { font-family: var(--font-type); font-size: 13px; padding: 0 5px; border-rad
 .search input { flex: 1; border: 0; outline: 0; background: transparent; font-family: var(--font-display); font-size: clamp(22px, 2.4vw, 30px); min-width: 0; color: var(--ink); }
 .search input::placeholder { color: var(--ink-3); }
 .search input::-webkit-search-cancel-button { display: none; }
-.filter-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0 24px; margin-bottom: 18px; }
+.filter-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 24px; margin-bottom: 40px; }
 .dd { position: relative; }
 .dd-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 44px; border-bottom: 1.5px solid var(--ink); font-size: 17px; text-align: left; }
 .dd-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -472,7 +473,6 @@ textarea.input { height: auto; padding: 10px 14px; resize: vertical; line-height
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1000px) {
-  .filter-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 20px; }
 }
 @media (max-width: 900px) {
   .hero-panel { grid-template-columns: 1fr; }
@@ -534,3 +534,26 @@ textarea.input { height: auto; padding: 10px 14px; resize: vertical; line-height
 .dots span:nth-child(2) { animation-delay: 0.2s; }
 .dots span:nth-child(3) { animation-delay: 0.4s; }
 @keyframes dot { 30% { opacity: 1; } }
+
+/* ---------- Section headings, quick categories, sort ---------- */
+.section-title { font-family: var(--font-display); font-weight: 400; font-size: clamp(30px, 3.2vw, 44px); line-height: 1.05; letter-spacing: -0.015em; margin: 0 0 6px; }
+.browse > .section-title { margin-bottom: 4px; }
+.quick-cats { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 18px; }
+.quick-cat { height: 38px; padding: 0 16px; border-radius: var(--r-pill); border: 1.5px solid var(--ink); font-family: var(--font-cond); font-weight: 700; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; background: transparent; transition: background 0.15s, color 0.15s; }
+.quick-cat:hover { background: var(--butter); }
+.quick-cat.on { background: var(--ink); color: var(--paper); }
+.collection-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; border-top: 2px solid var(--ink); padding-top: 26px; }
+.collection-sub { margin: 0; color: var(--ink-2); font-size: 16px; }
+.sort { position: relative; display: inline-flex; align-items: center; gap: 8px; border-bottom: 1.5px solid var(--ink); height: 40px; }
+.sort-label { font-family: var(--font-cond); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; font-size: 14px; color: var(--ink-2); }
+.sort select { appearance: none; -webkit-appearance: none; border: 0; background: transparent; font: inherit; font-size: 16px; padding-right: 22px; cursor: pointer; outline-offset: 4px; }
+.sort .icon { position: absolute; right: 0; pointer-events: none; }
+.settings-intro { margin: 4px 0 6px; color: var(--ink-2); }
+@media (max-width: 1000px) { .filter-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 20px; } }
+@media (max-width: 640px) {
+  .quick-cats { flex-wrap: nowrap; overflow-x: auto; margin-right: -14px; padding-right: 14px; scrollbar-width: none; }
+  .quick-cats::-webkit-scrollbar { display: none; }
+  .quick-cat { flex-shrink: 0; height: 34px; padding: 0 13px; font-size: 14px; }
+  .collection-head { padding-top: 20px; }
+}
+@media (max-width: 640px) { .search input { font-size: 19px; } }

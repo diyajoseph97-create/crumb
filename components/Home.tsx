@@ -3,10 +3,10 @@
 // of large-photo recipe cards.
 import { useEffect, useMemo, useState } from "react";
 import type { Recipe } from "@/lib/types";
-import { CUISINES, MEALS, TAGS, TIME_RANGES } from "@/lib/constants";
+import { CUISINES, TAGS, TIME_RANGES } from "@/lib/constants";
 import { activeFilterCount, allIngredients, applyFilters, EMPTY_FILTERS, type Filters } from "@/lib/filter";
 import { displayName } from "@/lib/synonyms";
-import { isSavedForLater, isYouTube } from "@/lib/recipe-utils";
+import { isSavedForLater, isYouTube, totalMinutes } from "@/lib/recipe-utils";
 import { Doodle, Icon, Modal } from "./ui";
 import { TableScene } from "./Porcelain";
 import { Dropdown } from "./Dropdown";
@@ -15,12 +15,22 @@ import { FilterPanel } from "./FilterPanel";
 import { JobCard, RecipeCard } from "./RecipeCard";
 import type { ImportJob } from "@/lib/importer";
 
-function greeting() {
-  const h = new Date().getHours();
-  if (h < 5) return "Late-night snack?";
-  if (h < 12) return "Good morning!";
-  if (h < 17) return "Good afternoon!";
-  return "Good evening!";
+const QUICK_MEALS = ["All recipes", "Breakfast", "Lunch", "Dinner", "Snacks", "Desserts"] as const;
+
+type Sort = "recent" | "az" | "quickest" | "favourites";
+const SORTS: { value: Sort; label: string }[] = [
+  { value: "recent", label: "Recently added" },
+  { value: "az", label: "A–Z" },
+  { value: "quickest", label: "Quickest first" },
+  { value: "favourites", label: "Favourites" },
+];
+function sortRecipes(list: Recipe[], sort: Sort): Recipe[] {
+  if (sort === "recent") return list; // already newest first
+  const copy = [...list];
+  if (sort === "az") copy.sort((a, b) => a.name.localeCompare(b.name));
+  if (sort === "quickest") copy.sort((a, b) => (totalMinutes(a) ?? Infinity) - (totalMinutes(b) ?? Infinity));
+  if (sort === "favourites") copy.sort((a, b) => Number(b.favourite) - Number(a.favourite));
+  return copy;
 }
 
 function useColumns() {
@@ -95,7 +105,18 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
   const inbox = useMemo(() => all.filter(isSavedForLater), [all]);
   const recipes = useMemo(() => all.filter((r) => !isSavedForLater(r)), [all]);
   const cols = useColumns();
-  const results = useMemo(() => applyFilters(recipes, filters), [recipes, filters]);
+  const [sort, setSortState] = useState<Sort>(() => {
+    try {
+      return (localStorage.getItem("crumb-sort") as Sort) || "recent";
+    } catch {
+      return "recent";
+    }
+  });
+  const setSort = (v: Sort) => {
+    setSortState(v);
+    try { localStorage.setItem("crumb-sort", v); } catch {}
+  };
+  const results = useMemo(() => sortRecipes(applyFilters(recipes, filters), sort), [recipes, filters, sort]);
   const ingredients = useMemo(() => allIngredients(recipes), [recipes]);
   const count = activeFilterCount(filters);
   const ingCount = filters.include.length + filters.exclude.length;
@@ -123,29 +144,38 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
     <div className="home">
       <section className="hero-panel">
         <div className="hero-copy">
-          <p className="hero-kicker">{greeting()}</p>
+          <p className="hero-kicker">Your little corner of the internet</p>
           <h1 className="h-display hero-title">
-            Let's get cooking from your <em className="script">saved Reels.</em>
+            All those recipes you saved? <em className="script">They're right here.</em>
           </h1>
-          <p className="hero-sub">
-            {recipes.length > 0
-              ? `${recipes.length} ${recipes.length === 1 ? "recipe" : "recipes"} in your cookbook${inbox.length ? `, ${inbox.length} waiting to be read` : ""}.`
-              : "Drop in a downloaded Reel and Crumb writes up the recipe."}
-          </p>
+          <p className="hero-sub">From Instagram, YouTube and everywhere in between. Ready whenever the cooking mood strikes.</p>
+          {recipes.length > 0 && (
+            <p className="hero-count">
+              {recipes.length} {recipes.length === 1 ? "recipe" : "recipes"} tucked into your cookbook.
+            </p>
+          )}
         </div>
         <TableScene className="hero-art" />
       </section>
 
-      <Marquee items={["Save it once", "Find it whenever", "Cook without rewatching", "No more lost Reels"]} />
+      <Marquee
+        items={[
+          "Save it. Find it. Make it.", "A good recipe is too good to lose.",
+          "Save it. Find it. Make it.", "Less scrolling, more cooking.",
+          "Save it. Find it. Make it.", "Your saved posts, finally organised.",
+          "Save it. Find it. Make it.", "From your feed to your kitchen.",
+        ]}
+      />
 
-      <section className="browse" aria-label="Browse recipes">
+      <section className="browse" aria-labelledby="whats-cooking">
+        <h2 className="section-title" id="whats-cooking">What's cooking?</h2>
         <label className="search">
           <Icon name="search" size={22} />
           <input
             type="search"
             value={filters.query}
             onChange={(e) => set({ query: e.target.value })}
-            placeholder="Search a dish or an ingredient…"
+            placeholder="Find a recipe, ingredient or craving..."
             aria-label="Search recipes"
           />
           {filters.query && (
@@ -155,15 +185,39 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
           )}
         </label>
 
+        <div className="quick-cats" role="group" aria-label="Meal">
+          {QUICK_MEALS.map((m) => {
+            const on = m === "All recipes" ? filters.meals.length === 0 : filters.meals.length === 1 && filters.meals[0] === m;
+            return (
+              <button key={m} className={`quick-cat ${on ? "on" : ""}`} aria-pressed={on} onClick={() => set({ meals: m === "All recipes" || on ? [] : [m] })}>
+                {m}
+              </button>
+            );
+          })}
+        </div>
+
         <div className="filter-row">
           <Dropdown allLabel="All times" options={TIME_RANGES.map((t) => ({ value: t.id, label: t.label }))} selected={filters.times} onChange={(v) => set({ times: v })} />
-          <Dropdown allLabel="All meals" options={MEALS.map((m) => ({ value: m, label: m }))} selected={filters.meals} onChange={(v) => set({ meals: v })} />
           <Dropdown allLabel="All cuisines" options={CUISINES.map((c) => ({ value: c, label: c }))} selected={filters.cuisines} onChange={(v) => set({ cuisines: v })} />
           <Dropdown allLabel="All diets" options={TAGS.map((t) => ({ value: t, label: t }))} selected={filters.tags} onChange={(v) => set({ tags: v })} />
           <button className="dd-btn dd-more filters-toggle" onClick={() => setSheet(true)}>
-            <span className="dd-label">Ingredients{ingCount ? ` (${ingCount})` : ""}</span>
+            <span className="dd-label">Filter recipes{ingCount ? ` (${ingCount})` : ""}</span>
             <Icon name="filter" size={18} />
           </button>
+        </div>
+
+        <div className="collection-head">
+          <div>
+            <h2 className="section-title">{filters.favourites ? "The ones worth making again." : "Your recipe collection"}</h2>
+            <p className="collection-sub">{filters.favourites ? "All your bookmarked bites, in one place." : "A little something for every craving."}</p>
+          </div>
+          <label className="sort">
+            <span className="sort-label">Sort</span>
+            <select value={sort} onChange={(e) => setSort((e.target as HTMLSelectElement).value as Sort)} aria-label="Sort recipes">
+              {SORTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+            <Icon name="down" size={16} />
+          </label>
         </div>
 
         <div className="browse-bar">
@@ -187,8 +241,8 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
         {!loading && recipes.length === 0 && inbox.length === 0 && jobs.length === 0 && (
           <div className="empty">
             <Doodle name="pot" className="empty-doodle" />
-            <h2 className="h-display">Your cookbook is empty</h2>
-            <p className="muted">Download a Reel, then drop it into Crumb and it'll write up the recipe for you.</p>
+            <h2 className="h-display">Your cookbook is waiting to be filled.</h2>
+            <p className="muted">That recipe you've been meaning to try? Start here. Save a link and let's give it a home.</p>
             <button className="btn btn-primary" onClick={onAdd}>
               <Icon name="plus" size={18} /> Add your first recipe
             </button>
@@ -198,14 +252,10 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
         {!loading && recipes.length > 0 && results.length === 0 && (
           <div className="empty">
             <Doodle name="crumbs" className="empty-doodle" />
-            <h2 className="h-display">Not a crumb in sight</h2>
-            <p className="muted">
-              Nothing matches {filters.query ? <>“{filters.query}”</> : "these filters"}
-              {count > 0 ? " with your current filters" : ""}. Try removing a filter or searching for one ingredient.
-            </p>
+            <h2 className="h-display">Nothing on the menu just yet.</h2>
+            <p className="muted">Try another ingredient or loosen up those filters.</p>
             <div className="row gap-sm center">
-              {count > 0 && <button className="btn btn-outline" onClick={clearAll}>Clear filters</button>}
-              {filters.query && <button className="btn btn-outline" onClick={() => set({ query: "" })}>Clear search</button>}
+              <button className="btn btn-outline" onClick={() => setFilters({ ...EMPTY_FILTERS })}>Clear filters</button>
             </div>
           </div>
         )}

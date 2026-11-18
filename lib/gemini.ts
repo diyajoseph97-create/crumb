@@ -4,7 +4,7 @@
 import { generateContent, listModels, uploadVideo, type Part } from "./gemini-api";
 import { CUISINES, MEALS, NUTRITION_THRESHOLDS, SENSITIVE_TAGS, TAGS } from "./constants";
 import type { Recipe, RecipeDraft } from "./types";
-import { cleanIngredients, cleanNutrition } from "./validate";
+import { cleanIngredients, cleanNutrition, cleanTips } from "./validate";
 import { resizeImage } from "./image";
 
 // Google retires model names often, so Crumb asks which models your key can
@@ -96,6 +96,7 @@ Strict rules:
 - Ingredients, quantities and steps: use ONLY what is said, shown on screen, written in the caption/screenshots, or clearly visible being added. Never invent them.
 - Amounts matter most. Look and listen carefully for them: spoken amounts ("two spoons of chilli powder", "a cup of rice", "one ladle of oil"), on-screen text, labels on packets or measuring cups, and countable items you can see (e.g. "3 onions" when three are clearly chopped). Write them as given, e.g. "2 spoons", "1 ladle", "3".
 - If an ingredient's amount isn't said, shown, written or clearly countable, write the ingredient without an amount (e.g. "Butter").
+- healthier_tips: 3 or 4 short, practical ideas to make this dish healthier, specific to its ingredients and method (a swap, a cooking method, more vegetables/protein/fibre, less oil/sugar/salt, portion). Each under 18 words, friendly, no medical claims. They are suggestions only: never change the ingredients or steps because of them. Empty if there's no recipe.
 - If no method is given anywhere, return an empty steps list. When steps come from the video, write them as clear instructions in the order shown.
 - Times and servings: use stated values. If not stated, give a realistic estimate from the steps and quantities and set the matching *_estimated flag to true.
 - Combine all sources; if they conflict, prefer written text (caption, on-screen text) over what is merely shown.
@@ -131,6 +132,7 @@ const SCHEMA = {
     cuisines: { type: "ARRAY", items: { type: "STRING", enum: [...CUISINES] }, description: "Add 'Indian' too when using North/South Indian" },
     meals: { type: "ARRAY", items: { type: "STRING", enum: [...MEALS] } },
     diet_tags: { type: "ARRAY", items: { type: "STRING", enum: ["Vegetarian", "Vegan", "Gluten-free", "Dairy-free", "Egg-free"] }, description: "Only if confident from the ingredients" },
+    healthier_tips: { type: "ARRAY", items: { type: "STRING" }, description: "3-4 short ideas to make this dish healthier" },
     nutrition_per_serving: {
       type: "OBJECT",
       nullable: true,
@@ -317,6 +319,7 @@ export function toResult(o: any, usedVideo: boolean): ReadResult {
       tags: [...new Set([...diet.filter((t) => !SENSITIVE_TAGS.includes(t)), ...nutriTags])],
       suggestedTags: diet.filter((t) => SENSITIVE_TAGS.includes(t)),
       nutrition,
+      healthTips: cleanTips(o.healthier_tips),
     },
   };
 }
@@ -340,9 +343,35 @@ export function mergeIntoExisting(existing: Recipe, found: Partial<RecipeDraft>)
   if (!existing.cuisines.length && found.cuisines?.length) patch.cuisines = found.cuisines;
   if (!existing.meals.length && found.meals?.length) patch.meals = found.meals;
   if (!existing.nutrition && found.nutrition) patch.nutrition = found.nutrition;
+  if (found.healthTips?.length && (patch.ingredients || !existing.healthTips?.length)) patch.healthTips = found.healthTips;
   const newTags = (found.tags ?? []).filter((t) => !existing.tags.includes(t));
   if (newTags.length) patch.tags = [...existing.tags, ...newTags];
   const newSugg = (found.suggestedTags ?? []).filter((t) => !existing.tags.includes(t) && !existing.suggestedTags.includes(t));
   if (newSugg.length) patch.suggestedTags = [...existing.suggestedTags, ...newSugg];
   return patch;
+}
+
+// ---------- Healthier swaps for recipes saved before tips existed ----------
+const TIPS_SCHEMA = { type: "OBJECT", properties: { tips: { type: "ARRAY", items: { type: "STRING" } } }, required: ["tips"] };
+const TIPS_SYSTEM = `You suggest how to make a home recipe healthier. Give 3 or 4 short, practical ideas specific to the ingredients and method: a swap, a cooking method, more vegetables/protein/fibre, less oil/sugar/salt, or portion. Each under 18 words, friendly, in English, no medical claims. Keep the dish recognisable.`;
+
+/** 3-4 suggestions for an existing recipe (text only, so it's quick and light on the free allowance). */
+export async function suggestHealthier(apiKey: string, r: Recipe): Promise<string[]> {
+  const parts: Part[] = [{ text: `Recipe: ${r.name}\nIngredients:\n${r.ingredients.map((i) => "- " + i.original).join("\n")}\nMethod:\n${r.steps.map((s, i) => `${i + 1}. ${s}`).join("\n") || "(not given)"}` }];
+  // Prefer the lighter Flash-Lite models for this small job; fall back to the usual model.
+  const list = await rankedModels(apiKey);
+  const blocked = limited();
+  const order = [...list.filter((m) => /flash-lite/.test(m)), ...list.filter((m) => !/flash-lite/.test(m))].filter((m) => !blocked[m]);
+  let last: unknown = new Error("no model");
+  for (const model of order.slice(0, 4)) {
+    try {
+      const text = await generateContent(apiKey, model, { parts, system: TIPS_SYSTEM, schema: TIPS_SCHEMA });
+      return cleanTips(JSON.parse(text || "{}").tips) ?? [];
+    } catch (e) {
+      last = e;
+      if (isQuota(e)) markLimited(model, e);
+      else if (!isBusy(e) && !isRetired(e)) break;
+    }
+  }
+  throw friendlyError(last);
 }

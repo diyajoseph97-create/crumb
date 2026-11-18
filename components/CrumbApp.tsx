@@ -9,6 +9,7 @@ import { RecipeEditor } from "./RecipeEditor";
 import { AddRecipeModal, IG_LINK } from "./AddRecipeModal";
 import { takeShared } from "@/lib/share";
 import { compactPhoto } from "@/lib/image";
+import { suggestHealthier } from "@/lib/gemini";
 import { onRemoteChanges, onSyncStatus, getSyncStatus, type SyncStatus } from "@/lib/sync";
 import { forgetJob, newJob, runImport, saveJob, savedJobs, type ImportInput, type ImportJob } from "@/lib/importer";
 import { isSavedForLater, isYouTube } from "@/lib/recipe-utils";
@@ -234,6 +235,26 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
     } else setAdd({ open: true, fill: r, shared: null });
   };
 
+  // Healthier-swap ideas for recipes saved before they existed (asked once, then kept).
+  const tipsAsked = useRef(new Set<string>());
+  const ensureTips = useCallback(
+    async (r: Recipe): Promise<"ok" | "failed" | "skip"> => {
+      if (!geminiKey || r.healthTips?.length || r.ingredients.length === 0 || tipsAsked.current.has(r.id)) return "skip";
+      tipsAsked.current.add(r.id);
+      try {
+        const tips = await suggestHealthier(geminiKey, r);
+        if (!tips.length) return "failed";
+        upsert(await store.update(r.id, { healthTips: tips }));
+        return "ok";
+      } catch {
+        tipsAsked.current.delete(r.id);
+        return "failed";
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [geminiKey, store],
+  );
+
   // Carry on with recipes that were still being added when Crumb was last closed.
   const resumed = useRef(false);
   useEffect(() => {
@@ -284,6 +305,10 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
   }
 
   async function saveEdit(id: string | null, draft: RecipeDraft) {
+    // New ingredients deserve new healthier-swap ideas.
+    const before = id ? recipes.find((r) => r.id === id) : undefined;
+    const ings = (list: { original: string }[]) => list.map((i) => i.original).join("\n");
+    if (!before || ings(before.ingredients) !== ings(draft.ingredients)) draft = { ...draft, healthTips: null };
     const saved = id ? await store.update(id, draft) : await store.create(draft);
     upsert(saved);
     go(`recipe-${saved.id}`);
@@ -348,6 +373,8 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
         onFavourite={() => toggleFavourite(current)}
         onAddScreenshots={() => fillFrom(current)}
         fillJob={jobs.find((j) => j.fillId === current.id) ?? null}
+        hasKey={Boolean(geminiKey)}
+        ensureTips={ensureTips}
         onRetryFill={(j) => runJob(j)}
         onSetLink={async (url) => {
           const code = instagramShortcode(url);

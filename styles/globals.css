@@ -562,3 +562,8 @@ textarea.input { height: auto; padding: 10px 14px; resize: vertical; line-height
 .settings-link { position: relative; }
 .sync-dot { position: absolute; top: 2px; right: -10px; width: 8px; height: 8px; border-radius: 50%; background: var(--orange); }
 .sync-warn { color: #8a4a12; background: var(--butter); padding: 8px 12px; border-radius: var(--r-sm); margin: 0; }
+
+/* Healthier-swap ideas in the notes card */
+.mag-tips { list-style: none; margin: 0; padding: 0; }
+.mag-tips li { font-family: var(--font-hand); font-weight: 600; font-size: 21px; line-height: 28px; color: #4a3a8c; padding-left: 18px; position: relative; }
+.mag-tips li::before { content: "~"; position: absolute; left: 0; top: 0; }

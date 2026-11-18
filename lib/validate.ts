@@ -55,10 +55,17 @@ export function normaliseRecipe(r: any): Recipe {
     tags: pick(r.tags, TAGS),
     suggestedTags: pick(r.suggestedTags, TAGS),
     nutrition: cleanNutrition(r.nutrition),
+    healthTips: cleanTips(r.healthTips),
     originalCaption: r.originalCaption ? str(r.originalCaption, 20000) : null,
     importNotes: r.importNotes ? str(r.importNotes, 2000) : null,
     favourite: Boolean(r.favourite),
     createdAt: str(r.createdAt, 40) || new Date().toISOString(),
     updatedAt: str(r.updatedAt, 40) || new Date().toISOString(),
   };
+}
+
+export function cleanTips(v: unknown): string[] | null {
+  if (!Array.isArray(v)) return null;
+  const tips = v.filter((t) => typeof t === "string" && t.trim()).map((t: string) => t.trim().slice(0, 200)).slice(0, 5);
+  return tips.length ? tips : null;
 }

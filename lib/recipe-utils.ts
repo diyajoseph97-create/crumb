@@ -141,6 +141,7 @@ export function emptyDraft(): RecipeDraft {
     tags: [],
     suggestedTags: [],
     nutrition: null,
+    healthTips: null,
     originalCaption: null,
     sourceTranscript: null,
     importNotes: null,

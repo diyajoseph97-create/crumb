@@ -41,6 +41,8 @@ export type Recipe = {
   /** AI-suggested tags not yet confirmed by you (shown with a "suggested" style). */
   suggestedTags: string[];
   nutrition: Nutrition | null;
+  /** Suggestions for a healthier version (shown in the notes card; the recipe itself is never changed). */
+  healthTips?: string[] | null;
   /** The raw caption text we found, kept for reference. */
   originalCaption: string | null;
   /** What was said and shown in the video (used when the recipe wasn't in the caption). */

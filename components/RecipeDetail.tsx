@@ -3,7 +3,7 @@
 // method panel with "STEP 1." labels, and a footer strip with time & servings.
 import { isYouTube } from "@/lib/recipe-utils";
 import type { ImportJob } from "@/lib/importer";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Recipe } from "@/lib/types";
 import { formatMinutes, missingParts, isIncomplete, totalIsPartial, totalMinutes } from "@/lib/recipe-utils";
 import { scaleFactor, scaleLine, formatAmount, splitIngredient } from "@/lib/scale";
@@ -22,6 +22,9 @@ type Props = {
   /** Details being filled in in the background, if any. */
   fillJob?: ImportJob | null;
   onRetryFill?: (j: ImportJob) => void;
+  hasKey?: boolean;
+  /** Fetch healthier-swap ideas if this recipe doesn't have any yet. */
+  ensureTips?: (r: Recipe) => Promise<"ok" | "failed" | "skip">;
 };
 
 function ReelLink({ url, onSetLink }: { url: string | null; onSetLink: (url: string) => Promise<string | null> }) {
@@ -65,7 +68,16 @@ function ReelLink({ url, onSetLink }: { url: string | null; onSetLink: (url: str
 
 const est = (flag: boolean | undefined, v: number | null) => (flag && v != null ? "~" : "");
 
-export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite, onAddScreenshots, onSetLink, fillJob, onRetryFill }: Props) {
+export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite, onAddScreenshots, onSetLink, fillJob, onRetryFill, hasKey, ensureTips }: Props) {
+  const [tipsState, setTipsState] = useState<"idle" | "loading" | "failed">("idle");
+  useEffect(() => {
+    if (!ensureTips || r.healthTips?.length || !hasKey || r.ingredients.length === 0) return;
+    let alive = true;
+    setTipsState("loading");
+    ensureTips(r).then((res) => alive && setTipsState(res === "failed" ? "failed" : "idle"));
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [r.id, r.healthTips, hasKey]);
   const [servings, setServings] = useState<number>(r.servings ?? 1);
   const [confirm, setConfirm] = useState(false);
   const factor = r.servings ? scaleFactor(r.servings, servings) : 1;
@@ -78,7 +90,6 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
   const hasNutrition = n && Object.values(n).some((v) => v != null);
   const stepServings = (d: number) => setServings((s) => Math.max(1, Math.min(50, s + d)));
   const categories = [...r.cuisines, ...r.meals];
-  const anyEstimate = r.timesEstimated || r.servingsEstimated;
 
   return (
     <article className="detail">
@@ -215,22 +226,23 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
             </section>
           )}
 
-          {/* Always shown, like the "my notes" box in a printed cookbook */}
-          {(
-            <section className={`mag-notes ${!anyEstimate && !(r.importNotes && !incomplete) ? "is-empty" : ""}`}>
-              <h2 className="mag-notes-head">Notes</h2>
-              {anyEstimate && (
-                <p>
-                  {r.timesEstimated && r.servingsEstimated
-                    ? "Times & servings are estimates. The Reel didn't say."
-                    : r.timesEstimated
-                    ? "Times are estimates. The Reel didn't say."
-                    : "Servings are an estimate. The Reel didn't say."}
-                </p>
-              )}
-              {r.importNotes && !incomplete && <p>{r.importNotes}</p>}
-            </section>
-          )}
+          {/* Like the "my notes" box in a printed cookbook: ideas for a healthier version */}
+          <section className={`mag-notes ${r.healthTips?.length ? "" : "is-empty"}`} aria-label="Make it healthier">
+            <h2 className="mag-notes-head">Make it healthier</h2>
+            {r.healthTips?.length ? (
+              <ul className="mag-tips">
+                {r.healthTips.map((t, i) => <li key={i}>{t}</li>)}
+              </ul>
+            ) : r.ingredients.length === 0 ? (
+              <p>Add the ingredients and you'll get a few healthier swaps here.</p>
+            ) : !hasKey ? (
+              <p>Add your key in Settings to get a few healthier swaps here.</p>
+            ) : tipsState === "failed" ? (
+              <p>Couldn't come up with swaps just now. Open this recipe again later.</p>
+            ) : (
+              <p>Thinking up some healthier swaps<span className="dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span></p>
+            )}
+          </section>
         </aside>
 
         {/* ---------- Right column: photo, title panel, method ---------- */}

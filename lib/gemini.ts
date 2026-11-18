@@ -41,8 +41,39 @@ async function rankedModels(ai: GoogleGenAI): Promise<string[]> {
   return modelListCache;
 }
 
+// Free-tier allowances are per model (e.g. ~20 a day for the newest Flash, hundreds for Flash-Lite).
+// When one runs out we note it here and use another model until it resets.
+const LIMITS_KEY = "crumb-gemini-limited";
+function limited(): Record<string, number> {
+  try {
+    const all = JSON.parse(localStorage.getItem(LIMITS_KEY) || "{}") as Record<string, number>;
+    const now = Date.now();
+    return Object.fromEntries(Object.entries(all).filter(([, until]) => until > now));
+  } catch {
+    return {};
+  }
+}
+/** Daily allowances reset at midnight Pacific time (07:00 or 08:00 UTC); use 08:00 UTC to be safe. */
+export function nextDailyReset(now = new Date()): number {
+  const r = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 8, 5));
+  if (r.getTime() <= now.getTime()) r.setUTCDate(r.getUTCDate() + 1);
+  return r.getTime();
+}
+function markLimited(model: string, e: unknown) {
+  const msg = msgOf(e);
+  const daily = /PerDay|per day|limit:\s*0\b|daily/i.test(msg);
+  const retry = msg.match(/retry(?:Delay| in)["':\s]*([\d.]+)\s*s/i);
+  const until = daily ? nextDailyReset() : Date.now() + Math.max(60, retry ? parseFloat(retry[1]) + 2 : 60) * 1000;
+  try {
+    localStorage.setItem(LIMITS_KEY, JSON.stringify({ ...limited(), [model]: until }));
+  } catch {}
+  return daily;
+}
+
 async function pickModel(ai: GoogleGenAI, avoid: string[] = []): Promise<string> {
-  return (await rankedModels(ai)).find((m) => !avoid.includes(m)) ?? FALLBACK_MODEL;
+  const blocked = limited();
+  const list = await rankedModels(ai);
+  return list.find((m) => !avoid.includes(m) && !blocked[m]) ?? list.find((m) => !avoid.includes(m)) ?? FALLBACK_MODEL;
 }
 
 async function currentModel(ai: GoogleGenAI): Promise<string> {
@@ -59,7 +90,9 @@ async function currentModel(ai: GoogleGenAI): Promise<string> {
 
 const msgOf = (e: unknown) => (e instanceof Error ? e.message : String(e));
 /** Google is temporarily overloaded or rate-limiting: worth waiting and trying again. */
-const isBusy = (e: unknown) => /\b(503|500|429)\b|UNAVAILABLE|overloaded|high demand|RESOURCE_EXHAUSTED|INTERNAL|try again later/i.test(msgOf(e));
+const isBusy = (e: unknown) => /\b(503|500)\b|UNAVAILABLE|overloaded|high demand|INTERNAL|try again later/i.test(msgOf(e));
+/** Out of free allowance for this model (per minute or per day). Retrying the same model just uses more of it. */
+const isQuota = (e: unknown) => /\b429\b|RESOURCE_EXHAUSTED|quota/i.test(msgOf(e));
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const isRetired = (e: unknown) => /no longer available|not found|NOT_FOUND|\b404\b|is not supported for generateContent/i.test(e instanceof Error ? e.message : String(e));
@@ -132,7 +165,11 @@ function friendlyError(e: unknown): Error {
   const msg = e instanceof Error ? e.message : String(e);
   if (/API key not valid|API_KEY_INVALID|permission|UNAUTHENTICATED|ACCESS_TOKEN_TYPE_UNSUPPORTED|invalid authentication|\b401\b/i.test(msg))
     return new Error("Gemini didn't accept your API key. Check it in Settings, or create a fresh key in AI Studio and paste that.");
-  if (/quota|429|RESOURCE_EXHAUSTED/i.test(msg)) return new Error("Gemini's free limit was reached for now. Your recording is still here. Try again in a minute.");
+  if (/ALL_DAILY_LIMITS/.test(msg)) {
+    const at = new Date(nextDailyReset()).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    return new Error(`You've used today's free Gemini allowance on every model Crumb can use. It resets at about ${at} your time. Your recording is still here, so try again then.`);
+  }
+  if (/quota|429|RESOURCE_EXHAUSTED/i.test(msg)) return new Error("Gemini's free per-minute limit was reached. Your recording is still here. Wait a minute and try again.");
   if (/\b(503|500)\b|UNAVAILABLE|overloaded|high demand/i.test(msg))
     return new Error("Gemini is very busy right now. Crumb retried a few times and tried a backup model. Your recording is still here, so try again in a minute or two.");
   if (/fetch|network/i.test(msg)) return new Error("Couldn't reach Gemini. Check your internet connection.");
@@ -197,14 +234,28 @@ export async function readRecipe({ apiKey, files, text, existing, onStage }: Rea
     // Try the usual model; if Google is busy, wait and retry, then try backup models.
     const preferred = await currentModel(ai);
     const tried: string[] = [];
-    let model = preferred;
+    let model = limited()[preferred] ? await pickModel(ai, [preferred]) : preferred;
+    let dailyHits = 0;
     let res: Awaited<ReturnType<typeof request>> | undefined;
     let lastError: unknown;
-    for (let attempt = 0; attempt < 6 && !res; attempt++) {
+    for (let attempt = 0; attempt < 8 && !res; attempt++) {
       try {
         res = await request(model);
       } catch (e) {
         lastError = e;
+        if (isQuota(e)) {
+          // This model's free allowance is used up: move to another model straight away.
+          if (markLimited(model, e)) dailyHits++;
+          tried.push(model);
+          onStage?.("busy");
+          const next = await pickModel(ai, [...new Set(tried)]);
+          if (tried.includes(next) || limited()[next]) {
+            if (dailyHits > 0 && dailyHits >= new Set(tried).size) lastError = new Error("ALL_DAILY_LIMITS");
+            break;
+          }
+          model = next;
+          continue;
+        }
         if (isRetired(e)) {
           // That model was retired: remember the next one instead.
           tried.push(model);

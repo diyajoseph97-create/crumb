@@ -389,7 +389,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
               ))}
             </ol>
             {busy ? (
-              <p className="form-note small">Gemini is busy right now. Crumb is waiting a moment and trying again…</p>
+              <p className="form-note small">Gemini is busy, or one model is out of free requests. Crumb is trying again, with another model if needed…</p>
             ) : (
               <p className="muted small">A minute-long recording usually takes 20–60 seconds. Keep this open.</p>
             )}

@@ -19,9 +19,6 @@ type Props = {
   onOpenRecipe: (id: string) => void;
   onTypeIn: () => void;
   onOpenSettings: () => void;
-  /** Filled in by the "Save to Crumb" bookmark button. */
-  initialUrl?: string;
-  initialCaption?: string;
 };
 
 const IG_LINK = /https?:\/\/(?:www\.)?instagram\.com\/(?:reel|reels|p|tv)\/[A-Za-z0-9_-]+\/?(?:\?[^\s]*)?/i;
@@ -32,14 +29,13 @@ type Picked = { file: File; preview: string | null };
 
 const MAX_IMAGES = 8;
 
-export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillRecipe, onSaved, onOpenRecipe, onTypeIn, onOpenSettings, initialUrl, initialCaption }: Props) {
+export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillRecipe, onSaved, onOpenRecipe, onTypeIn, onOpenSettings }: Props) {
   const [url, setUrl] = useState("");
   const [files, setFiles] = useState<Picked[]>([]);
   const [caption, setCaption] = useState("");
   const [phase, setPhase] = useState<Phase>({ kind: "form" });
   const [error, setError] = useState<string | null>(null);
   const [help, setHelp] = useState(false);
-  const [fromClipboard, setFromClipboard] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -48,30 +44,15 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
     setPhase({ kind: "form" });
     setError(null);
     setFiles([]);
-    setFromClipboard(false);
-    setUrl(initialUrl ?? "");
-    setCaption(initialCaption ?? "");
-    // Just copied a Reel link? Fill it in. (The browser may ask permission the first time.)
-    if (!initialUrl && !fillRecipe && navigator.clipboard?.readText) {
-      navigator.clipboard
-        .readText()
-        .then((t) => {
-          const m = t.match(IG_LINK);
-          if (m) {
-            setUrl((cur) => cur || m[0]);
-            setFromClipboard(true);
-          }
-        })
-        .catch(() => {});
-    }
-  }, [open, initialUrl, initialCaption, fillRecipe]);
+    setUrl("");
+    setCaption("");
+  }, [open]);
 
   /** Anything typed or pasted into the box: pull out the Instagram link, keep the rest as caption. */
   function onSmartText(text: string) {
     const m = text.match(IG_LINK);
     if (m && !fillRecipe) {
       setUrl(m[0]);
-      setFromClipboard(false);
       text = text.replace(m[0], "").replace(/^\s+/, "");
     }
     setCaption(text);
@@ -236,7 +217,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
               <p className="muted">
                 {fillRecipe
                   ? `Add a recording, screenshots or the caption of “${fillRecipe.name}”. Crumb fills in what's missing and keeps what you have.`
-                  : "Paste the Reel link and caption, or drop a recording or screenshots. Anything works."}
+                  : "Drop in the downloaded Reel. Add its link and caption too if you have them."}
               </p>
             </div>
 
@@ -244,61 +225,63 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
               <div className={`link-chip ${code ? "" : "bad"}`}>
                 <Icon name="link" size={16} />
                 <span className="link-chip-text">{code ? `Instagram Reel · ${code}` : url}</span>
-                {fromClipboard && <span className="chip-note">from your clipboard</span>}
-                <button type="button" className="icon-btn sm" onClick={() => { setUrl(""); setFromClipboard(false); }} aria-label="Remove link">
+                <button type="button" className="icon-btn sm" onClick={() => setUrl("")} aria-label="Remove link">
                   <Icon name="x" size={14} />
                 </button>
+              </div>
+            )}
+
+            {!video && (
+              <button type="button" className={`dropzone big ${dragging ? "over" : ""}`} onClick={() => fileRef.current?.click()}>
+                <Icon name="play" size={30} />
+                <strong>Drop the downloaded Reel here</strong>
+                <span className="muted small">or click to choose it · screenshots work too</span>
+              </button>
+            )}
+            {files.length > 0 && (
+              <div className="shots">
+                {video && (
+                  <div className="shot shot-video wide">
+                    <Icon name="play" size={22} />
+                    <span className="shot-name">{video.file.name}</span>
+                    <span>{(video.file.size / 1024 / 1024).toFixed(1)} MB</span>
+                    <button type="button" className="shot-x" aria-label="Remove video" onClick={() => setFiles((x) => x.filter((f) => f !== video))}>
+                      <Icon name="x" size={12} />
+                    </button>
+                  </div>
+                )}
+                {images.map((f, i) => (
+                  <div key={i} className="shot">
+                    <img src={f.preview!} alt={`Screenshot ${i + 1}`} />
+                    <button type="button" className="shot-x" aria-label="Remove screenshot" onClick={() => setFiles((x) => x.filter((y) => y !== f))}>
+                      <Icon name="x" size={12} />
+                    </button>
+                  </div>
+                ))}
+                <button type="button" className="shot shot-add" onClick={() => fileRef.current?.click()} aria-label="Add more"><Icon name="plus" /></button>
               </div>
             )}
 
             <div className="smartzone">
               <textarea
                 className="smart-input"
-                rows={files.length ? 3 : 5}
+                rows={3}
                 value={caption}
                 onChange={(e) => onSmartText(e.target.value)}
                 onPaste={onPaste}
-                placeholder={fillRecipe ? "Paste the caption or recipe text…" : "Paste the Reel link and its caption here…\n\nYou can also paste screenshots, or drop a screen recording anywhere."}
-                aria-label="Paste a link, caption or screenshots"
-                autoFocus
+                placeholder={fillRecipe ? "Paste the caption or recipe text (optional)…" : "Optional: paste the Reel link (for “Watch original”) and its caption…"}
+                aria-label="Paste a link or caption"
               />
-              {files.length > 0 && (
-                <div className="shots">
-                  {video && (
-                    <div className="shot shot-video">
-                      <Icon name="play" size={22} />
-                      <span>{(video.file.size / 1024 / 1024).toFixed(1)} MB</span>
-                      <button type="button" className="shot-x" aria-label="Remove video" onClick={() => setFiles((x) => x.filter((f) => f !== video))}>
-                        <Icon name="x" size={12} />
-                      </button>
-                    </div>
-                  )}
-                  {images.map((f, i) => (
-                    <div key={i} className="shot">
-                      <img src={f.preview!} alt={`Screenshot ${i + 1}`} />
-                      <button type="button" className="shot-x" aria-label="Remove screenshot" onClick={() => setFiles((x) => x.filter((y) => y !== f))}>
-                        <Icon name="x" size={12} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="smartzone-bar">
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => fileRef.current?.click()}>
-                  <Icon name="play" size={16} /> Add recording or screenshots
-                </button>
-                <button type="button" className="link-btn" onClick={() => setHelp(!help)} aria-expanded={help}>
-                  {help ? "Hide tips" : "Tips"}
-                </button>
-              </div>
-              {dragging && <div className="drop-overlay"><Icon name="plus" size={28} /> Drop to add</div>}
             </div>
             <input ref={fileRef} type="file" accept="image/*,video/*" multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
 
+            <button type="button" className="link-btn help-toggle" onClick={() => setHelp(!help)} aria-expanded={help}>
+              {help ? "Hide tips" : "Tips"}
+            </button>
             {help && (
               <ul className="help-list">
-                <li><strong>Fastest:</strong> on instagram.com, click the <em>Save to Crumb</em> button in your bookmarks bar. The link and caption come with it. (Set it up in Settings.)</li>
-                <li><strong>Recipe only in the video?</strong> Screen-record it playing with sound: Mac <kbd>⌘</kbd><kbd>⇧</kbd><kbd>5</kbd>, Windows <kbd>Win</kbd><kbd>Alt</kbd><kbd>R</kbd>. Then drop the file here.</li>
+                <li><strong>The video is what matters.</strong> Crumb listens to what's said and reads on-screen text, so the recipe is found even when it isn't in the caption.</li>
+                <li><strong>Add the link</strong> so you can rewatch the original and Crumb can warn you about duplicates.</li>
                 <li><strong>No time now?</strong> Paste just the link and choose <em>Save for later</em>.</li>
               </ul>
             )}

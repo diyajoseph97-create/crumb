@@ -583,3 +583,12 @@ kbd { font-family: var(--font-body); font-size: 12px; font-weight: 700; padding:
 .qr { width: 150px; flex-shrink: 0; background: #fff; border-radius: var(--r-sm); padding: 6px; border: 1px solid var(--line); }
 .qr svg { display: block; width: 100%; height: auto; }
 .add-device-form .input { min-width: 180px; }
+
+/* ============ Drop the downloaded Reel ============ */
+.dropzone.big { width: 100%; padding: 34px 20px; gap: 6px; border-width: 2.5px; font-size: 16px; }
+.dropzone.big .icon { color: var(--tomato-deep); }
+.dropzone.over, .is-dragging .dropzone.big { border-color: var(--cobalt); background: var(--cobalt-soft); transform: scale(1.01); }
+.shot-video.wide { grid-column: span 3; aspect-ratio: auto; min-height: 96px; flex-direction: row; gap: 10px; padding: 0 36px 0 16px; justify-content: flex-start; border-radius: var(--r-md); }
+.shot-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+button.shot-add { cursor: pointer; }
+.form-ok { background: var(--cobalt-soft); color: var(--cobalt-deep); font-weight: 500; padding: 10px 14px; border-radius: var(--r-sm); margin: 12px 0 0; font-size: 14px; }

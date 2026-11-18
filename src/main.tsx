@@ -1,88 +1,50 @@
-// Crumb starts here.
-// - Device already connected → open your cookbook (private GitHub repo).
-// - Not connected → setup screen (with an option to try sample recipes).
-import { useMemo, useState } from "react";
+// Crumb starts here: a welcome screen the first time (Gemini key, or skip),
+// then your cookbook, saved in this browser.
+import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { CrumbApp } from "@/components/CrumbApp";
-import { Setup } from "@/components/Setup";
-import { setImageResolver } from "@/components/RecipeImage";
-import { clearSettings, createGitHubStore, loadSettings, saveSettings, type Settings } from "@/lib/github";
-import { DemoStore } from "@/lib/store";
-import type { Recipe } from "@/lib/types";
-import { readAddHash } from "@/lib/bookmarklet";
+import { SettingsPanel, Welcome } from "@/components/Setup";
+import { getGeminiKey, LocalStore, requestPersistence } from "@/lib/local-store";
 
-// Read (and then hide) anything passed in the address: a recipe from the bookmark
-// button (#add=…) or an "Add another device" link (#join=…).
-const startHash = window.location.hash;
-const startAdd = readAddHash(startHash);
-const startJoin = startHash.startsWith("#join=") ? startHash.slice(6) : null;
-if (startAdd || startJoin) history.replaceState(null, "", window.location.pathname + window.location.search);
-
-function downloadBackup(recipes: Recipe[]) {
-  const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), count: recipes.length, recipes }, null, 2)], { type: "application/json" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `crumb-backup-${new Date().toISOString().slice(0, 10)}.json`;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-}
+const WELCOMED = "crumb-welcomed";
 
 function Root() {
-  const [settings, setSettings] = useState<Settings | null>(() => loadSettings());
-  const [demo, setDemo] = useState(false);
-  const [pendingAdd] = useState(startAdd);
+  const [key, setKey] = useState(getGeminiKey());
+  const [welcomed, setWelcomed] = useState(() => {
+    try {
+      return Boolean(localStorage.getItem(WELCOMED)) || Boolean(getGeminiKey());
+    } catch {
+      return true;
+    }
+  });
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const store = useMemo(() => {
-    if (!settings) return null;
-    const s = createGitHubStore(settings);
-    setImageResolver((u) => s.resolveImage(u));
-    return s;
-  }, [settings]);
-
-  const connect = (s: Settings) => {
-    saveSettings(s);
-    setDemo(false);
-    setSettings(s);
-  };
-
-  if (store && settings) {
+  if (!welcomed) {
     return (
-      <CrumbApp
-        key={`${settings.owner}/${settings.repo}`}
-        store={store}
-        geminiKey={settings.geminiKey || null}
-        initialAdd={pendingAdd}
-        renderSettings={(close, recipes) => (
-          <Setup
-            inApp
-            initial={settings}
-            onConnect={(s) => { connect(s); close(); }}
-            onExport={() => downloadBackup(recipes)}
-            onDisconnect={() => {
-              if (!window.confirm("Disconnect this device? Your recipes stay safe in GitHub. You'll need the token to reconnect.")) return;
-              clearSettings();
-              setImageResolver(null);
-              setSettings(null);
-            }}
-            onCancel={close}
-          />
-        )}
+      <Welcome
+        onDone={() => {
+          try {
+            localStorage.setItem(WELCOMED, "1");
+          } catch {}
+          requestPersistence();
+          setKey(getGeminiKey());
+          setWelcomed(true);
+        }}
       />
     );
   }
 
-  if (demo) {
-    return (
-      <CrumbApp
-        key="demo"
-        store={DemoStore}
-        geminiKey={null}
-        renderSettings={(close) => <Setup inApp onConnect={(s) => { connect(s); close(); }} onCancel={close} />}
-      />
-    );
-  }
-
-  return <Setup joinPayload={startJoin} onConnect={connect} onDemo={() => setDemo(true)} />;
+  return (
+    <CrumbApp
+      reloadToken={reloadKey}
+      store={LocalStore}
+      geminiKey={key || null}
+      renderSettings={(close) => (
+        <SettingsPanel onClose={close} onKeyChange={setKey} onRestored={() => setReloadKey((n) => n + 1)} />
+      )}
+    />
+  );
 }
 
+requestPersistence();
 createRoot(document.getElementById("root")!).render(<Root />);

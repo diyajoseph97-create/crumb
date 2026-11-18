@@ -1,7 +1,7 @@
 // Builds the whole app into docs/index.html, which GitHub Pages serves.
 // Run: npm run build
 import { build } from "esbuild";
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, cpSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -32,6 +32,7 @@ const html = `<!DOCTYPE html>
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="Crumb" />
 <title>Crumb</title>
+<link rel="preload" href="fonts/vt323-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="icon" href="data:image/svg+xml,${encodeURIComponent(icon)}" />
 <style>${css}</style>
 </head>
@@ -43,5 +44,6 @@ const html = `<!DOCTYPE html>
 mkdirSync(resolve(root, "docs"), { recursive: true });
 writeFileSync(resolve(root, "docs/index.html"), html);
 writeFileSync(resolve(root, "docs/.nojekyll"), "");
+cpSync(resolve(root, "fonts"), resolve(root, "docs/fonts"), { recursive: true });
 writeFileSync(resolve(root, "docs/robots.txt"), "User-agent: *\nDisallow: /\n");
 console.log("Built docs/index.html", Math.round(html.length / 1024) + " KB");

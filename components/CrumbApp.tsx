@@ -182,11 +182,9 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
       <header className="topbar">
         <Logo onClick={() => go("")} />
         <div className="row gap-xs">
-          {route.page !== "home" && (
-            <button className="btn btn-primary btn-sm" onClick={() => setAdd({ open: true, fill: null })}>
-              <Icon name="plus" size={16} /> Add recipe
-            </button>
-          )}
+          <button className="btn btn-primary btn-sm add-btn" onClick={() => setAdd({ open: true, fill: null })}>
+            <Icon name="plus" size={16} /> Add recipe
+          </button>
           <button className="icon-btn lg" onClick={() => setSettingsOpen(true)} aria-label="Settings" title="Settings">
             <Icon name="gear" />
           </button>

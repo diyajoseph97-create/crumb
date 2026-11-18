@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import type { Recipe } from "@/lib/types";
-import { MEAL_STYLE, TIME_RANGES } from "@/lib/constants";
+import { TIME_RANGES } from "@/lib/constants";
 import { activeFilterCount, allIngredients, applyFilters, EMPTY_FILTERS, type Filters } from "@/lib/filter";
 import { displayName } from "@/lib/synonyms";
 import { isSavedForLater } from "@/lib/recipe-utils";
 import { Doodle, Icon, Modal } from "./ui";
+import { TableScene, WaveBand } from "./Porcelain";
 import { FilterPanel } from "./FilterPanel";
 import { RecipeCard } from "./RecipeCard";
 
@@ -115,21 +116,31 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
   return (
     <div className="home">
       <section className="hero">
-        <Doodle name="sparkle" className="hero-deco deco-1" />
-        <Doodle name="squiggle" className="hero-deco deco-2" />
-        <Doodle name="chilli" className="hero-deco deco-3" />
-        <p className="hero-kicker">{greeting()}</p>
-        <h1 className="h-display h-xl">
-          What are we <span className="hl">cooking</span> today?
-        </h1>
-        <div className="search-row">
+        <div className="hero-text">
+          <p className="hero-kicker">{greeting()}</p>
+          <h1 className="h-pixel h-xl">What are we cooking today?</h1>
+          <div className="tabs-line" role="group" aria-label="Quick categories">
+            <button className={`tab ${!filters.favourites && filters.meals.length === 0 ? "on" : ""}`} onClick={() => set({ favourites: false, meals: [] })}>
+              All
+            </button>
+            <button className={`tab ${filters.favourites ? "on" : ""}`} onClick={() => set({ favourites: !filters.favourites })} aria-pressed={filters.favourites}>
+              Favourites
+            </button>
+            {SHORTCUT_MEALS.map((m) => {
+              const on = filters.meals.length === 1 && filters.meals[0] === m;
+              return (
+                <button key={m} className={`tab ${on ? "on" : ""}`} onClick={() => set({ meals: on ? [] : [m] })} aria-pressed={on}>
+                  {m}
+                </button>
+              );
+            })}
+          </div>
           <label className="search">
-            <Icon name="search" size={22} />
             <input
               type="search"
               value={filters.query}
               onChange={(e) => set({ query: e.target.value })}
-              placeholder="Search dishes or ingredients: paneer, dosa, quick pasta…"
+              placeholder="Search a dish or an ingredient: paneer, dosa, pasta…"
               aria-label="Search recipes"
             />
             {filters.query && (
@@ -137,31 +148,12 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
                 <Icon name="x" size={18} />
               </button>
             )}
+            <span className="search-go" aria-hidden="true"><Icon name="search" size={20} /></span>
           </label>
-          <button className="btn btn-primary btn-lg add-btn" onClick={onAdd}>
-            <Icon name="plus" size={20} /> Add recipe
-          </button>
         </div>
-        <div className="shortcuts" role="group" aria-label="Quick categories">
-          <button className={`shortcut tone-tomato ${filters.favourites ? "on" : ""}`} onClick={() => set({ favourites: !filters.favourites })} aria-pressed={filters.favourites}>
-            <Icon name="heart" size={16} filled={filters.favourites} /> Favourites
-          </button>
-          {SHORTCUT_MEALS.map((m, i) => {
-            const on = filters.meals.length === 1 && filters.meals[0] === m;
-            return (
-              <button
-                key={m}
-                className={`shortcut tone-${MEAL_STYLE[m].colour} ${on ? "on" : ""}`}
-                style={{ ["--tilt" as string]: `${i % 2 ? 1.5 : -1.5}deg` }}
-                onClick={() => set({ meals: on ? [] : [m] })}
-                aria-pressed={on}
-              >
-                <Doodle name={MEAL_STYLE[m].doodle} className="shortcut-doodle" /> {m}
-              </button>
-            );
-          })}
-        </div>
+        <TableScene className="hero-art" />
       </section>
+      <WaveBand />
 
       <div className="library">
         <aside className="sidebar" aria-label="Filters">

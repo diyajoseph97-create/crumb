@@ -3,8 +3,8 @@ import { useState } from "react";
 import type { Recipe } from "@/lib/types";
 import { formatMinutes, missingParts, isIncomplete, totalIsPartial, totalMinutes } from "@/lib/recipe-utils";
 import { scaleFactor, scaleLine, formatAmount } from "@/lib/scale";
-import { MEAL_STYLE } from "@/lib/constants";
-import { ConfirmDialog, Doodle, Icon, Sticker } from "./ui";
+import { ConfirmDialog, Doodle, Icon } from "./ui";
+import { Dish } from "./Porcelain";
 import { RecipeImage } from "./RecipeImage";
 
 type Props = {
@@ -16,7 +16,6 @@ type Props = {
   onAddScreenshots: () => void;
 };
 
-const TILTS = [-2, 1.5, -1, 2, -1.5];
 const est = (flag: boolean | undefined, v: number | null) => (flag && v != null ? "~" : "");
 
 export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite, onAddScreenshots }: Props) {
@@ -31,6 +30,8 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
   const n = r.nutrition;
   const hasNutrition = n && Object.values(n).some((v) => v != null);
   const stepServings = (d: number) => setServings((s) => Math.max(1, Math.min(50, s + d)));
+
+  const categories = [...r.cuisines, ...r.meals];
 
   return (
     <article className="detail">
@@ -48,23 +49,29 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
         </div>
       </div>
 
-      <header className="detail-hero">
-        <div className="detail-media">
-          <RecipeImage recipe={r} variant="hero" />
-          <button className={`fav-btn big ${r.favourite ? "on" : ""}`} onClick={onFavourite} aria-pressed={r.favourite} aria-label={r.favourite ? "Remove from favourites" : "Add to favourites"}>
-            <Icon name="heart" size={22} filled={r.favourite} />
-          </button>
-        </div>
-
-        <div className="detail-info">
-          <div className="sticker-row">
-            {[...r.cuisines, ...r.meals].map((c, i) => (
-              <Sticker key={c} tone={r.cuisines.includes(c) ? "cobalt" : MEAL_STYLE[c]?.colour ?? "butter"} tilt={TILTS[i % TILTS.length]}>
-                {c}
-              </Sticker>
-            ))}
+      {incomplete && (
+        <section className="notice notice-warn">
+          <Doodle name="sparkle" className="notice-doodle" />
+          <div>
+            <h2 className="notice-title">This recipe needs a few details</h2>
+            {missing.length > 0 && <p>Missing: {missing.join(", ")}.</p>}
+            {r.importNotes && <p className="muted">{r.importNotes}</p>}
+            <div className="row gap-sm wrap">
+              <button className="btn btn-primary btn-sm" onClick={onAddScreenshots}>
+                <Icon name="play" size={16} /> Fill in from a video or screenshots
+              </button>
+              <button className="btn btn-outline btn-sm" onClick={onEdit}>
+                <Icon name="edit" size={16} /> Fill in by hand
+              </button>
+            </div>
           </div>
-          <h1 className="h-display h-lg detail-title">{r.name || "Untitled recipe"}</h1>
+        </section>
+      )}
+
+      <section className="recipe-top">
+        <div className="recipe-intro">
+          {categories.length > 0 && <p className="cat-line">{categories.join("  ·  ")}</p>}
+          <h1 className="h-pixel detail-title">{r.name || "Untitled recipe"}</h1>
 
           <dl className="facts">
             <div><dt>Prep</dt><dd>{est(r.timesEstimated, r.prepMinutes)}{formatMinutes(r.prepMinutes)}</dd></div>
@@ -79,10 +86,10 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
             <p className="estimate-note">
               <span className="est-badge">~ estimated</span>
               {r.timesEstimated && r.servingsEstimated
-                ? "The Reel didn't state the times or servings, so these are AI estimates."
+                ? "The Reel didn't state the times or servings."
                 : r.timesEstimated
-                ? "The Reel didn't state the times, so these are AI estimates."
-                : "The Reel didn't state the servings, so this is an AI estimate."}
+                ? "The Reel didn't state the times."
+                : "The Reel didn't state the servings."}
             </p>
           )}
 
@@ -97,39 +104,22 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
             </div>
           )}
 
-          {r.sourceUrl && (
-            <a className="btn btn-cobalt watch-btn" href={r.sourceUrl} target="_blank" rel="noopener noreferrer">
-              <Icon name="play" size={20} /> Watch original video <Icon name="external" size={16} />
-            </a>
-          )}
-        </div>
-      </header>
-
-      {!incomplete && r.importNotes && <p className="import-note"><Icon name="sparkle" size={14} /> {r.importNotes}</p>}
-
-      {incomplete && (
-        <section className="notice notice-warn">
-          <Doodle name="sparkle" className="notice-doodle" />
-          <div>
-            <h2 className="notice-title">This recipe needs a few details</h2>
-            {missing.length > 0 && <p>Missing: {missing.join(", ")}.</p>}
-            {r.importNotes && <p className="muted">{r.importNotes}</p>}
-            <div className="row gap-sm wrap">
-              <button className="btn btn-primary btn-sm" onClick={onAddScreenshots}>
-                <Icon name="camera" size={16} /> Fill in from screenshots
-              </button>
-              <button className="btn btn-outline btn-sm" onClick={onEdit}>
-                <Icon name="edit" size={16} /> Fill in by hand
-              </button>
-            </div>
+          <div className="intro-actions">
+            {r.sourceUrl && (
+              <a className="btn btn-primary watch-btn" href={r.sourceUrl} target="_blank" rel="noopener noreferrer">
+                <Icon name="play" size={18} /> Watch original video <Icon name="external" size={15} />
+              </a>
+            )}
+            <button className={`btn btn-outline fav-toggle ${r.favourite ? "on" : ""}`} onClick={onFavourite} aria-pressed={r.favourite}>
+              <Icon name="heart" size={17} filled={r.favourite} /> {r.favourite ? "Favourite" : "Add to favourites"}
+            </button>
           </div>
-        </section>
-      )}
+          {!incomplete && r.importNotes && <p className="import-note"><Icon name="sparkle" size={14} /> {r.importNotes}</p>}
+        </div>
 
-      <div className="cook-cols">
         <section className="ingredients" aria-labelledby="ing-h">
           <div className="section-head">
-            <h2 id="ing-h" className="h-display h-md">Ingredients</h2>
+            <h2 id="ing-h" className="h-pixel h-md">Ingredients:</h2>
             {r.servings ? (
               <div className="stepper" role="group" aria-label="Servings">
                 <button onClick={() => stepServings(-1)} aria-label="Fewer servings" disabled={servings <= 1}><Icon name="minus" size={16} /></button>
@@ -153,10 +143,10 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
           {lines.length === 0 ? (
             <p className="muted">No ingredients yet.</p>
           ) : (
-            <ul className="ing-list">
-              {lines.map((l) => (
+            <ul className="ing-grid">
+              {lines.map((l, i) => (
                 <li key={l.id} className={l.scaled.status === "scaled" ? "is-scaled" : ""}>
-                  <span className="ing-dot" aria-hidden="true" />
+                  <Dish i={i} className="ing-dish" />
                   <span className="ing-text">{l.scaled.text}</span>
                   {l.scaled.status === "unscalable" && (
                     <span className="unscaled" title="Couldn't read this amount reliably, so it's shown as originally written">
@@ -173,23 +163,30 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
             </p>
           )}
         </section>
+      </section>
 
+      <hr className="rule" />
+
+      <section className="recipe-bottom">
+        <div className="detail-media">
+          <RecipeImage recipe={r} variant="hero" />
+        </div>
         <section className="instructions" aria-labelledby="ins-h">
-          <h2 id="ins-h" className="h-display h-md">Method</h2>
+          <h2 id="ins-h" className="h-pixel h-md">Instructions:</h2>
           {r.steps.length === 0 ? (
             <p className="muted">No steps yet.</p>
           ) : (
-            <ol className="steps">
+            <ol className={`steps ${r.steps.length > 3 ? "two-col" : ""}`}>
               {r.steps.map((s, i) => (
                 <li key={i}>
-                  <span className="step-num" aria-hidden="true">{i + 1}</span>
+                  <span className="step-num" aria-hidden="true">{i + 1}.</span>
                   <p>{s}</p>
                 </li>
               ))}
             </ol>
           )}
         </section>
-      </div>
+      </section>
 
       <details className="nutrition">
         <summary>

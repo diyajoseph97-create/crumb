@@ -1,8 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { MEAL_STYLE } from "@/lib/constants";
 import type { Recipe } from "@/lib/types";
-import { Doodle } from "./ui";
+import { Plate, Chopsticks, rimFor } from "./Porcelain";
 
 // Photos stored in your private GitHub repo ("gh:images/…") have to be fetched
 // with your token, so the app registers a resolver at start-up.
@@ -38,7 +37,6 @@ function hash(s: string) {
 
 export function RecipeImage({ recipe, variant = "card" }: { recipe: Recipe; variant?: "card" | "hero" }) {
   const src = useImageSrc(recipe.imageUrl);
-  const style = MEAL_STYLE[recipe.meals[0]] ?? { colour: "tangerine", doodle: "crumbs" };
   const h = hash(recipe.id);
   const aspect = ASPECTS[h % ASPECTS.length];
 
@@ -49,17 +47,16 @@ export function RecipeImage({ recipe, variant = "card" }: { recipe: Recipe; vari
     // still loading the photo: keep the space so the gallery doesn't jump
     return <div className={`placeholder ph-loading rimg-${variant}`} style={variant === "card" ? { aspectRatio: `1 / ${aspect}` } : undefined} aria-label="Loading photo" />;
   }
+  // No photo yet: an empty porcelain plate, waiting to be filled.
   return (
     <div
-      className={`placeholder ph-${style.colour} rimg-${variant}`}
+      className={`placeholder rimg-${variant}`}
       style={variant === "card" ? { aspectRatio: `1 / ${aspect}` } : undefined}
       role="img"
       aria-label={`No photo yet for ${recipe.name}`}
     >
-      <div className="ph-blob" style={{ transform: `rotate(${(h % 60) - 30}deg)` }} />
-      <Doodle name={style.doodle} className="ph-doodle" strokeWidth={2} />
-      <Doodle name="crumbs" className="ph-crumbs" strokeWidth={2.4} />
-      <span className="ph-initial" aria-hidden="true">{recipe.name.trim()[0] ?? "?"}</span>
+      <Plate rim={rimFor(h)} deep={h % 3 === 0} className="ph-plate" style={{ transform: `rotate(${(h % 40) - 20}deg)` }} />
+      {h % 2 === 0 && <Chopsticks className="ph-chop" style={{ transform: `rotate(${18 + (h % 20)}deg)` }} />}
     </div>
   );
 }

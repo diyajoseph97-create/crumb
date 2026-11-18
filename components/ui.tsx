@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useRef } from "react";
+import { Dish } from "./Porcelain";
 
 // ---------- Icons (simple line icons, 24px grid) ----------
 const PATHS: Record<string, React.ReactNode> = {
@@ -47,35 +48,18 @@ export function Icon({ name, size = 20, filled = false, className = "" }: { name
   );
 }
 
-// ---------- Food doodles (used on placeholders & decoration) ----------
-export function Doodle({ name, className = "", strokeWidth = 2.2 }: { name: string; className?: string; strokeWidth?: number }) {
-  const d: Record<string, React.ReactNode> = {
-    egg: <><path d="M32 8c-11 0-18 17-18 27a18 18 0 0 0 36 0C50 25 43 8 32 8Z" /><circle cx="32" cy="36" r="8" /></>,
-    bowl: <><path d="M8 30h48a24 24 0 0 1-48 0Z" /><path d="M24 22c0-4 4-4 4-8M34 22c0-4 4-4 4-8" /><path d="M22 54h20" /></>,
-    pot: <><path d="M12 26h40v18a10 10 0 0 1-10 10H22a10 10 0 0 1-10-10V26Z" /><path d="M6 26h52M26 20h12" /><path d="M24 14c0-3 3-3 3-6M36 14c0-3 3-3 3-6" /></>,
-    chilli: <><path d="M44 12c-2 6 2 10 2 16 0 14-14 26-32 26 8-6 14-14 16-24 2-8 6-14 14-18Z" /><path d="M44 12c0-4 2-6 6-6" /></>,
-    leaf: <><path d="M10 54C10 26 26 10 54 10c0 28-16 44-44 44Z" /><path d="M10 54 38 26" /></>,
-    swirl: <><path d="M14 42h36l-4 14H18l-4-14Z" /><path d="M18 42c-4-10 6-12 6-18 4 2 10-2 8-10 6 2 12 8 10 16 4 2 4 8 2 12" /></>,
-    cup: <><path d="M14 18h30l-4 36H18l-4-36Z" /><path d="M44 26h4a6 6 0 0 1 0 12h-6" /><path d="M24 12c0-3 3-3 3-6M32 12c0-3 3-3 3-6" /></>,
-    crumbs: <><circle cx="14" cy="40" r="4" /><circle cx="30" cy="48" r="3" /><circle cx="44" cy="38" r="5" /><circle cx="24" cy="26" r="2.5" /><circle cx="50" cy="22" r="3" /></>,
-    sparkle: <path d="M32 6c2 14 8 20 22 22-14 2-20 8-22 22-2-14-8-20-22-22 14-2 20-8 22-22Z" />,
-    squiggle: <path d="M4 32c6-12 12-12 18 0s12 12 18 0 12-12 18 0" />,
-  };
-  return (
-    <svg className={`doodle ${className}`} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {d[name] ?? d.crumbs}
-    </svg>
-  );
+// ---------- Decorative porcelain (replaces the old food doodles) ----------
+const DOODLE_RIM: Record<string, number> = { pot: 0, bowl: 1, egg: 2, crumbs: 3, sparkle: 4, chilli: 5, leaf: 4, swirl: 2, cup: 1 };
+export function Doodle({ name, className = "" }: { name: string; className?: string; strokeWidth?: number }) {
+  return <Dish i={DOODLE_RIM[name] ?? 0} className={`doodle ${className}`} />;
 }
 
-// ---------- Wordmark ----------
+// ---------- Wordmark: "crumb" in an outlined pill ----------
 export function Logo({ onClick }: { onClick?: () => void }) {
   return (
     <button className="logo" onClick={onClick} aria-label="Crumb home">
       <span className="logo-word">crumb</span>
-      <span className="logo-dots" aria-hidden="true">
-        <i /><i /><i />
-      </span>
+      <span className="logo-dot" aria-hidden="true" />
     </button>
   );
 }

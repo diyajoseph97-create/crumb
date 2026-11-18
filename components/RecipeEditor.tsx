@@ -6,6 +6,7 @@ import { canonicalise, displayName, normaliseName } from "@/lib/synonyms";
 import { instagramShortcode, newId } from "@/lib/recipe-utils";
 import { resizeImage } from "@/lib/image";
 import { Icon, ToggleChip } from "./ui";
+import { useImageSrc } from "./RecipeImage";
 
 type Props = {
   initial: RecipeDraft;
@@ -32,6 +33,7 @@ export function RecipeEditor({ initial, title, onCancel, onSave, uploadImage }: 
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const photoSrc = useImageSrc(d.imageUrl);
 
   const set = (patch: Partial<RecipeDraft>) => setD((x) => ({ ...x, ...patch }));
   const n: Nutrition = d.nutrition ?? { calories: null, protein: null, carbs: null, fat: null, fibre: null };
@@ -139,7 +141,7 @@ export function RecipeEditor({ initial, title, onCancel, onSave, uploadImage }: 
             <span className="field-label">Photo</span>
             <div className="photo-field">
               {d.imageUrl ? (
-                <img src={d.imageUrl} alt="" className="photo-preview" />
+                photoSrc ? <img src={photoSrc} alt="" className="photo-preview" /> : <div className="photo-empty" />
               ) : (
                 <div className="photo-empty"><Icon name="image" size={28} /></div>
               )}

@@ -7,8 +7,8 @@ import { emptyDraft } from "@/lib/recipe-utils";
 import { Home } from "./Home";
 import { RecipeDetail } from "./RecipeDetail";
 import { RecipeEditor } from "./RecipeEditor";
-import { AddRecipeModal, type AddMode } from "./AddRecipeModal";
-import { Doodle, Icon, Logo } from "./ui";
+import { AddRecipeModal } from "./AddRecipeModal";
+import { Doodle, Icon, Logo, Modal } from "./ui";
 
 // Simple page routing using the part of the URL after "#":
 //   (none)        library
@@ -30,13 +30,21 @@ const go = (name: string) => {
 
 type Toast = { id: number; text: string; action?: { label: string; run: () => void } };
 
-export function CrumbApp({ store }: { store: Store }) {
+type AppProps = {
+  store: Store;
+  geminiKey: string | null;
+  /** Renders the settings panel (or, in the demo, the "connect" screen). */
+  renderSettings: (close: () => void, recipes: Recipe[]) => React.ReactNode;
+};
+
+export function CrumbApp({ store, geminiKey, renderSettings }: AppProps) {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [route, setRoute] = useState<Route>({ page: "home" });
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
-  const [add, setAdd] = useState<{ open: boolean; mode: AddMode; fill: Recipe | null }>({ open: false, mode: "link", fill: null });
+  const [add, setAdd] = useState<{ open: boolean; fill: Recipe | null }>({ open: false, fill: null });
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const toast = useCallback((text: string, action?: Toast["action"]) => {
@@ -60,6 +68,7 @@ export function CrumbApp({ store }: { store: Store }) {
     const onHash = () => {
       setRoute(parseHash());
       setAdd((a) => (a.open ? { ...a, open: false } : a)); // close any open dialog on navigation
+      setSettingsOpen(false);
       window.scrollTo({ top: 0 });
     };
     onHash();
@@ -127,7 +136,7 @@ export function CrumbApp({ store }: { store: Store }) {
         setFilters={setFilters}
         onOpen={(id) => go(`recipe-${id}`)}
         onFavourite={toggleFavourite}
-        onAdd={() => setAdd({ open: true, mode: "link", fill: null })}
+        onAdd={() => setAdd({ open: true, fill: null })}
       />
     );
   } else if (route.page === "new") {
@@ -155,7 +164,7 @@ export function CrumbApp({ store }: { store: Store }) {
         onEdit={() => go(`edit-${current.id}`)}
         onDelete={() => remove(current)}
         onFavourite={() => toggleFavourite(current)}
-        onAddScreenshots={() => setAdd({ open: true, mode: "screenshots", fill: current })}
+        onAddScreenshots={() => setAdd({ open: true, fill: current })}
       />
     );
   }
@@ -164,25 +173,39 @@ export function CrumbApp({ store }: { store: Store }) {
     <div className="app">
       {store.mode === "demo" && (
         <div className="demo-banner">
-          <Icon name="sparkle" size={14} /> Demo: changes stay in this browser, and Instagram import is simulated.
+          <Icon name="sparkle" size={14} /> Sample recipes, saved in this browser only.{" "}
+          <button className="link-btn light" onClick={() => setSettingsOpen(true)}>Connect your cookbook</button>
         </div>
       )}
       <header className="topbar">
         <Logo onClick={() => go("")} />
-        {route.page !== "home" && (
-          <button className="btn btn-primary btn-sm" onClick={() => setAdd({ open: true, mode: "link", fill: null })}>
-            <Icon name="plus" size={16} /> Add recipe
+        <div className="row gap-xs">
+          {route.page !== "home" && (
+            <button className="btn btn-primary btn-sm" onClick={() => setAdd({ open: true, fill: null })}>
+              <Icon name="plus" size={16} /> Add recipe
+            </button>
+          )}
+          <button className="icon-btn lg" onClick={() => setSettingsOpen(true)} aria-label="Settings" title="Settings">
+            <Icon name="gear" />
           </button>
-        )}
+        </div>
       </header>
       <main className="main">{body}</main>
 
+      <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} label="Settings">
+        {renderSettings(() => setSettingsOpen(false), recipes)}
+      </Modal>
+
       <AddRecipeModal
         open={add.open}
-        initialMode={add.mode}
         fillRecipe={add.fill}
         store={store}
         recipes={recipes}
+        geminiKey={geminiKey}
+        onOpenSettings={() => {
+          setAdd((a) => ({ ...a, open: false }));
+          setSettingsOpen(true);
+        }}
         onClose={() => setAdd((a) => ({ ...a, open: false }))}
         onSaved={upsert}
         onOpenRecipe={(id) => go(`recipe-${id}`)}

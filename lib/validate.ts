@@ -1,0 +1,64 @@
+// Cleans AI output and saved data so only known fields and values are kept.
+import type { Ingredient, Nutrition, Recipe } from "./types";
+import { CUISINES, MEALS, TAGS } from "./constants";
+import { canonicalise, normaliseName } from "./synonyms";
+import { newId } from "./recipe-utils";
+
+const str = (v: unknown, max = 500) => (typeof v === "string" ? v.slice(0, max) : "");
+export const num = (v: unknown, max = 100000) =>
+  typeof v === "number" && isFinite(v) && v >= 0 ? Math.min(Math.round(v * 10) / 10, max) : null;
+export const pick = (v: unknown, allowed: readonly string[]) =>
+  Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === "string" && allowed.includes(x)))] : [];
+
+export function cleanIngredients(v: unknown): Ingredient[] {
+  if (!Array.isArray(v)) return [];
+  return v
+    .slice(0, 80)
+    .map((i: any) => {
+      const original = str(i?.original, 300).trim();
+      const canonical = normaliseName(str(i?.canonical, 80)) || canonicalise(original);
+      return { id: str(i?.id, 64) || newId(), original, canonical };
+    })
+    .filter((i) => i.original);
+}
+
+export function cleanNutrition(v: unknown): Nutrition | null {
+  if (!v || typeof v !== "object") return null;
+  const o = v as Record<string, unknown>;
+  const n: Nutrition = {
+    calories: num(o.calories, 10000),
+    protein: num(o.protein, 1000),
+    carbs: num(o.carbs, 1000),
+    fat: num(o.fat, 1000),
+    fibre: num(o.fibre, 1000),
+  };
+  return Object.values(n).some((x) => x != null) ? n : null;
+}
+
+/** Makes sure a recipe read back from storage has every field. */
+export function normaliseRecipe(r: any): Recipe {
+  return {
+    id: str(r.id, 64),
+    name: str(r.name, 200),
+    imageUrl: r.imageUrl ? str(r.imageUrl, 3000000) : null,
+    ingredients: cleanIngredients(r.ingredients),
+    steps: Array.isArray(r.steps) ? r.steps.filter((s: unknown) => typeof s === "string") : [],
+    prepMinutes: num(r.prepMinutes),
+    cookMinutes: num(r.cookMinutes),
+    servings: num(r.servings),
+    timesEstimated: Boolean(r.timesEstimated),
+    servingsEstimated: Boolean(r.servingsEstimated),
+    sourceUrl: r.sourceUrl ? str(r.sourceUrl, 500) : null,
+    sourceShortcode: r.sourceShortcode ? str(r.sourceShortcode, 64) : null,
+    cuisines: pick(r.cuisines, CUISINES),
+    meals: pick(r.meals, MEALS),
+    tags: pick(r.tags, TAGS),
+    suggestedTags: pick(r.suggestedTags, TAGS),
+    nutrition: cleanNutrition(r.nutrition),
+    originalCaption: r.originalCaption ? str(r.originalCaption, 20000) : null,
+    importNotes: r.importNotes ? str(r.importNotes, 2000) : null,
+    favourite: Boolean(r.favourite),
+    createdAt: str(r.createdAt, 40) || new Date().toISOString(),
+    updatedAt: str(r.updatedAt, 40) || new Date().toISOString(),
+  };
+}

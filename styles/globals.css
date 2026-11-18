@@ -557,3 +557,8 @@ textarea.input { height: auto; padding: 10px 14px; resize: vertical; line-height
   .collection-head { padding-top: 20px; }
 }
 @media (max-width: 640px) { .search input { font-size: 19px; } }
+
+/* ---------- Sync ---------- */
+.settings-link { position: relative; }
+.sync-dot { position: absolute; top: 2px; right: -10px; width: 8px; height: 8px; border-radius: 50%; background: var(--orange); }
+.sync-warn { color: #8a4a12; background: var(--butter); padding: 8px 12px; border-radius: var(--r-sm); margin: 0; }

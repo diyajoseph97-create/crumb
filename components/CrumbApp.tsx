@@ -9,6 +9,7 @@ import { RecipeEditor } from "./RecipeEditor";
 import { AddRecipeModal, IG_LINK } from "./AddRecipeModal";
 import { takeShared } from "@/lib/share";
 import { compactPhoto } from "@/lib/image";
+import { onRemoteChanges, onSyncStatus, getSyncStatus, type SyncStatus } from "@/lib/sync";
 import { newJob, runImport, type ImportInput, type ImportJob } from "@/lib/importer";
 import { isSavedForLater, isYouTube } from "@/lib/recipe-utils";
 import { Doodle, Icon, Modal } from "./ui";
@@ -124,6 +125,27 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
   useEffect(() => {
     if (reloadToken) load();
   }, [reloadToken, load]);
+
+  // Sync: refresh when recipes arrive from another device; show a dot if sync is paused.
+  const [sync, setSync] = useState<SyncStatus>(getSyncStatus());
+  useEffect(() => {
+    const offRemote = onRemoteChanges(() => {
+      store.list().then((list) => setRecipes(list.sort((a, b) => b.createdAt.localeCompare(a.createdAt))));
+    });
+    const offStatus = onSyncStatus(setSync);
+    if (sessionStorage.getItem("crumb-just-signed-in")) {
+      sessionStorage.removeItem("crumb-just-signed-in");
+      toast("Signed in. Your cookbook will now sync across devices.");
+    } else if (sessionStorage.getItem("crumb-just-connected")) {
+      sessionStorage.removeItem("crumb-just-connected");
+      toast("Sync is set up. Sign in to finish.", { label: "Settings", run: () => setSettingsOpen(true) });
+    }
+    return () => {
+      offRemote();
+      offStatus();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store]);
 
   // One-time tidy-up: older photos were saved large; shrink them quietly when the browser is idle.
   useEffect(() => {
@@ -330,6 +352,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken }: AppP
         <div className="topbar-stickers">
           <button className="settings-link" onClick={() => setSettingsOpen(true)} aria-label="Settings">
             Settings <span aria-hidden="true">→</span>
+            {sync.state === "paused" && <span className="sync-dot" title="Sync paused" aria-label="Sync paused" />}
           </button>
           <CircleBadge
             className="add-btn"

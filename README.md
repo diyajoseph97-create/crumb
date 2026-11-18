@@ -22,6 +22,36 @@ Open Crumb and paste a free **Gemini API key** from **aistudio.google.com/apikey
 ## Backups (important)
 Recipes live only in this browser. **Settings → Download a backup** saves everything as one file; **Restore from backup** brings it back in any browser.
 
+## Sync across devices (optional, Supabase)
+Recipes stay on each device; Supabase keeps your devices in step. If the free project pauses after a quiet week, Crumb keeps working and catches up once you restore the project on supabase.com.
+
+1. Create a Supabase project.
+2. In **SQL Editor**, run:
+```sql
+create table if not exists public.recipes (
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  id text not null,
+  data jsonb not null default '{}',
+  deleted boolean not null default false,
+  updated_at timestamptz not null default now(),
+  synced_at timestamptz not null default now(),
+  primary key (user_id, id)
+);
+alter table public.recipes enable row level security;
+create policy "Only my recipes" on public.recipes for all
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+grant select, insert, update, delete on public.recipes to authenticated;
+create or replace function public.recipes_touch() returns trigger
+  language plpgsql as $$ begin new.synced_at := clock_timestamp(); return new; end $$;
+create trigger recipes_touch before insert or update on public.recipes
+  for each row execute function public.recipes_touch();
+create index if not exists recipes_sync_idx on public.recipes (user_id, synced_at);
+```
+3. **Authentication → URL Configuration:** Site URL and Redirect URL = `https://diyajoseph97-create.github.io/crumb/`.
+4. In Crumb: **Settings → Sync across devices**, paste the Project URL and the **publishable** key (never the secret key), then sign in with your email. On other devices use **Set up another device**, then sign in with the same email.
+
+Optional: to sign in with a 6-digit code instead of the link (handy inside the installed app), add `{{ .Token }}` to the **Magic Link** and **Confirm signup** email templates.
+
 ## Changing the code
 ```
 npm install
@@ -33,3 +63,4 @@ Commit and push to publish.
 - UI: Preact (React-compatible, aliased in `scripts/build.mjs`).
 - Gemini calls: `lib/gemini-api.ts` (plain fetch, no SDK). Recipe reading: `lib/gemini.ts`. Background adding: `lib/importer.ts`.
 - Offline copy, share menu: `public/sw.js`.
+- Sync: `lib/cloud.ts` (Supabase auth + table via fetch) and `lib/sync.ts` (push/pull, first-time merge).

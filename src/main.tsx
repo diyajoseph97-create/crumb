@@ -6,6 +6,8 @@ import { CrumbApp } from "@/components/CrumbApp";
 import { SettingsPanel, Welcome } from "@/components/Setup";
 import { getGeminiKey, LocalStore, requestPersistence } from "@/lib/local-store";
 import { registerServiceWorker } from "@/lib/share";
+import { applySetupCode, takeSessionFromUrl } from "@/lib/cloud";
+import { startSync } from "@/lib/sync";
 
 const WELCOMED = "crumb-welcomed";
 
@@ -49,4 +51,25 @@ function Root() {
 
 requestPersistence();
 registerServiceWorker();
+
+// Arriving from a sync set-up link (#connect=…) or a sign-in email (#access_token=…).
+function takeLinks(): boolean {
+  let took = false;
+  const setup = location.hash.match(/^#connect=([A-Za-z0-9+/=_-]+)/);
+  if (setup) {
+    if (applySetupCode(setup[1])) sessionStorage.setItem("crumb-just-connected", "1");
+    history.replaceState(null, "", location.pathname + location.search);
+    took = true;
+  }
+  if (takeSessionFromUrl()) {
+    sessionStorage.setItem("crumb-just-signed-in", "1");
+    took = true;
+  }
+  return took;
+}
+takeLinks();
+// Same links opened while Crumb is already open: apply them and start fresh.
+window.addEventListener("hashchange", () => takeLinks() && location.reload());
+startSync();
+
 createRoot(document.getElementById("root")!).render(<Root />);

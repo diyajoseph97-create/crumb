@@ -1,6 +1,5 @@
-// Recipes are saved in this browser (IndexedDB), photos included.
-// Nothing is sent anywhere except the video/screenshots you ask Gemini to read.
-// Use Settings → Download a backup now and then; clearing browser data deletes it.
+// Recipes are saved in this browser (IndexedDB), photos included. If sync is
+// switched on (lib/sync.ts), changes made here are also copied to Supabase.
 import type { Recipe, RecipeDraft } from "./types";
 import type { Store } from "./store";
 import { newId } from "./recipe-utils";
@@ -33,6 +32,24 @@ function tx<T>(mode: IDBTransactionMode, run: (s: IDBObjectStore) => IDBRequest<
   );
 }
 
+// ---------- Change notifications (used by sync) ----------
+type Change = { id: string; deleted: boolean };
+const changeListeners = new Set<(c: Change) => void>();
+/** Called whenever you add, edit or delete a recipe on this device. */
+export function onLocalChange(fn: (c: Change) => void) {
+  changeListeners.add(fn);
+  return () => changeListeners.delete(fn);
+}
+const changed = (id: string, deleted = false) => changeListeners.forEach((fn) => fn({ id, deleted }));
+
+/** Low-level access for sync: these don't count as your changes. */
+export const raw = {
+  get: (id: string) => tx<Recipe | undefined>("readonly", (s) => s.get(id) as IDBRequest<Recipe | undefined>),
+  put: (r: Recipe) => tx("readwrite", (s) => s.put(r)).then(() => undefined),
+  remove: (id: string) => tx("readwrite", (s) => s.delete(id)).then(() => undefined),
+  all: () => tx<Recipe[]>("readonly", (s) => s.getAll() as IDBRequest<Recipe[]>),
+};
+
 /** Ask the browser to keep Crumb's data even when space runs low. */
 export function requestPersistence() {
   navigator.storage?.persist?.().catch(() => {});
@@ -48,6 +65,7 @@ export const LocalStore: Store = {
     const now = new Date().toISOString();
     const r: Recipe = { ...draft, id: newId(), createdAt: now, updatedAt: now };
     await tx("readwrite", (s) => s.put(r));
+    changed(r.id);
     return r;
   },
   async update(id: string, patch: Partial<RecipeDraft>) {
@@ -55,10 +73,12 @@ export const LocalStore: Store = {
     if (!current) throw new Error("Recipe not found");
     const r: Recipe = { ...current, ...patch, id, updatedAt: new Date().toISOString() };
     await tx("readwrite", (s) => s.put(r));
+    changed(id);
     return r;
   },
   async remove(id: string) {
     await tx("readwrite", (s) => s.delete(id));
+    changed(id, true);
   },
   async uploadImage(dataUrl: string) {
     return dataUrl; // photos are stored inside the recipe
@@ -100,6 +120,7 @@ export async function restoreBackup(file: File): Promise<number> {
     t.oncomplete = () => resolve();
     t.onerror = () => reject(t.error ?? new Error("Couldn't restore. The browser's storage may be full."));
   });
+  recipes.forEach((r) => changed(r.id));
   return recipes.length;
 }
 

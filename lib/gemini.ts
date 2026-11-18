@@ -7,7 +7,52 @@ import type { Recipe, RecipeDraft } from "./types";
 import { cleanIngredients, cleanNutrition } from "./validate";
 import { resizeImage } from "./image";
 
-export const GEMINI_MODEL = "gemini-2.5-flash";
+// Google retires model names often, so Crumb asks which models your key can
+// use and picks the newest stable "Flash" one, remembering it on this browser.
+const FALLBACK_MODEL = "gemini-3.8-flash";
+const MODEL_KEY = "crumb-gemini-model";
+
+function rank(name: string): number | null {
+  // Stable Flash only: "gemini-3.8-flash" (not -lite, -tts, -image, -live, previews…)
+  const m = name.match(/^(?:models\/)?gemini-(\d+(?:\.\d+)?)-flash$/);
+  return m ? parseFloat(m[1]) : null;
+}
+
+async function pickModel(ai: GoogleGenAI, avoid: string[] = []): Promise<string> {
+  try {
+    const names: string[] = [];
+    const pager = await ai.models.list({ config: { pageSize: 200 } });
+    for await (const m of pager) {
+      const ok = !m.supportedActions || m.supportedActions.includes("generateContent");
+      if (ok && m.name) names.push(m.name.replace(/^models\//, ""));
+    }
+    const stable = names.filter((n) => rank(n) != null && !avoid.includes(n)).sort((a, b) => rank(b)! - rank(a)!);
+    if (stable[0]) return stable[0];
+    // No stable Flash? Take the newest Flash preview that isn't a special-purpose model.
+    const preview = names
+      .filter((n) => /^gemini-[\d.]+-flash(-preview)?(-[\d-]+)?$/.test(n) && !avoid.includes(n))
+      .sort()
+      .reverse();
+    if (preview[0]) return preview[0];
+  } catch {
+    /* listing failed: fall back */
+  }
+  return FALLBACK_MODEL;
+}
+
+async function currentModel(ai: GoogleGenAI): Promise<string> {
+  try {
+    const saved = localStorage.getItem(MODEL_KEY);
+    if (saved) return saved;
+  } catch {}
+  const m = await pickModel(ai);
+  try {
+    localStorage.setItem(MODEL_KEY, m);
+  } catch {}
+  return m;
+}
+
+const isRetired = (e: unknown) => /no longer available|not found|NOT_FOUND|\b404\b|is not supported for generateContent/i.test(e instanceof Error ? e.message : String(e));
 const INLINE_LIMIT = 14 * 1024 * 1024; // bigger videos are uploaded to Gemini first
 
 const SYSTEM = `You extract recipes from social media posts (Instagram Reels) for a personal cookbook.
@@ -130,11 +175,25 @@ export async function readRecipe({ apiKey, files, text, existing, onStage }: Rea
     parts.push({ text: prompt });
 
     onStage?.("read");
-    const res = await ai.models.generateContent({
-      model: GEMINI_MODEL,
-      contents: [{ role: "user", parts }],
-      config: { systemInstruction: SYSTEM, responseMimeType: "application/json", responseSchema: SCHEMA as any, temperature: 0 },
-    });
+    const request = (model: string) =>
+      ai.models.generateContent({
+        model,
+        contents: [{ role: "user", parts }],
+        config: { systemInstruction: SYSTEM, responseMimeType: "application/json", responseSchema: SCHEMA as any, temperature: 0 },
+      });
+    let model = await currentModel(ai);
+    let res;
+    try {
+      res = await request(model);
+    } catch (e) {
+      if (!isRetired(e)) throw e;
+      // That model was retired: pick another and try once more.
+      model = await pickModel(ai, [model]);
+      try {
+        localStorage.setItem(MODEL_KEY, model);
+      } catch {}
+      res = await request(model);
+    }
     const o = JSON.parse(res.text ?? "{}");
     return toResult(o, usedVideo);
   } catch (e) {

@@ -7,12 +7,13 @@ import { convertLine, type UnitSystem } from "@/lib/units";
 import { addToList, isOnList, onListChange, removeFromList } from "@/lib/shopping";
 import { CookMode, Stars } from "./CookMode";
 import type { ImportJob } from "@/lib/importer";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import type { Recipe } from "@/lib/types";
 import { formatMinutes, missingParts, isIncomplete, totalIsPartial, totalMinutes } from "@/lib/recipe-utils";
 import { scaleFactor, scaleLine, formatAmount, splitIngredient } from "@/lib/scale";
 import { ConfirmDialog, Doodle, Icon, useViewOnly } from "./ui";
-import { RecipeImage } from "./RecipeImage";
+import { RecipeImage, hash } from "./RecipeImage";
+import { pairFor } from "./Shapes";
 
 type Props = {
   recipe: Recipe;
@@ -126,6 +127,7 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
   const hasNutrition = n && Object.values(n).some((v) => v != null);
   const stepServings = (d: number) => setServings((s) => Math.max(1, Math.min(50, s + d)));
   const categories = [...r.cuisines, ...r.meals];
+  const pair = pairFor(hash(r.id));
 
   return (
     <article className="detail">
@@ -197,6 +199,45 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
           </div>
         </section>
       )}
+
+      {/* ---------- Cover: the recipe's own colour pair, photo in an arch ---------- */}
+      <header className="cover" style={{ "--cover-bg": pair.bg, "--cover-a": pair.a, "--cover-b": pair.b } as CSSProperties}>
+        <div className="cover-text">
+          {categories.length > 0 && <p className="mag-cats">{categories.join(" · ")}</p>}
+          <h1 className="mag-title">{r.name || "Untitled recipe"}</h1>
+          {(!view.on || (r.cookedCount ?? 0) > 0 || (r.collections ?? []).length > 0) && (
+            <div className="mag-meta">
+              <span className="cooked">
+                {(r.cookedCount ?? 0) > 0
+                  ? `Made ${r.cookedCount} ${r.cookedCount === 1 ? "time" : "times"}${r.lastCookedAt ? ` · last ${new Date(r.lastCookedAt).toLocaleDateString([], { day: "numeric", month: "short" })}` : ""}`
+                  : "Not made yet"}
+              </span>
+              <Stars value={r.rating ?? null} onChange={!view.on && onUpdate ? (v) => onUpdate({ rating: v }) : undefined} size={16} />
+              {!view.on && onUpdate && (
+                <button className="link-btn" onClick={() => onUpdate({ cookedCount: (r.cookedCount ?? 0) + 1, lastCookedAt: new Date().toISOString() })}>I made this</button>
+              )}
+            </div>
+          )}
+          <Collections value={r.collections ?? []} all={allCollections} onChange={!view.on && onUpdate ? (c) => onUpdate({ collections: c }) : undefined} />
+          <div className="mag-reel">
+            <ReelLink url={r.sourceUrl} onSetLink={onSetLink} />
+          </div>
+        </div>
+        <div className="cover-art">
+          <div className={`mag-photo ${r.imageUrl ? "" : "no-photo"}`}>
+            <RecipeImage recipe={r} variant="hero" />
+            {!r.imageUrl && onSetPhoto && !view.on && (
+              <label className="btn btn-outline btn-sm add-photo">
+                <Icon name="camera" size={15} /> Add a photo
+                <input type="file" accept="image/*" hidden onChange={async (e) => {
+                  const f = (e.target as HTMLInputElement).files?.[0];
+                  if (f) onSetPhoto(await resizeImage(f));
+                }} />
+              </label>
+            )}
+          </div>
+        </div>
+      </header>
 
       <div className="mag">
         {/* ---------- Left column: ingredients, tags & nutrition, notes ---------- */}
@@ -306,39 +347,8 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
 
         {/* ---------- Right column: photo, title panel, method ---------- */}
         <section className="mag-main">
-          <h2 className="mag-head mag-head-main">Recipe</h2>
-          <div className={`mag-photo ${r.imageUrl ? "" : "no-photo"}`}>
-            <RecipeImage recipe={r} variant="hero" />
-            {!r.imageUrl && onSetPhoto && !view.on && (
-              <label className="btn btn-outline btn-sm add-photo">
-                <Icon name="camera" size={15} /> Add a photo
-                <input type="file" accept="image/*" hidden onChange={async (e) => {
-                  const f = (e.target as HTMLInputElement).files?.[0];
-                  if (f) onSetPhoto(await resizeImage(f));
-                }} />
-              </label>
-            )}
-          </div>
-          <div className="mag-reel">
-            <ReelLink url={r.sourceUrl} onSetLink={onSetLink} />
-          </div>
+          <h2 className="mag-head mag-head-main">Method</h2>
           <div className="mag-panel">
-            {categories.length > 0 && <p className="mag-cats">{categories.join(" · ")}</p>}
-            <h1 className="mag-title">{r.name || "Untitled recipe"}</h1>
-            {(!view.on || (r.cookedCount ?? 0) > 0 || (r.collections ?? []).length > 0) && (
-              <div className="mag-meta">
-                <span className="cooked">
-                  {(r.cookedCount ?? 0) > 0
-                    ? `Made ${r.cookedCount} ${r.cookedCount === 1 ? "time" : "times"}${r.lastCookedAt ? ` · last ${new Date(r.lastCookedAt).toLocaleDateString([], { day: "numeric", month: "short" })}` : ""}`
-                    : "Not made yet"}
-                </span>
-                <Stars value={r.rating ?? null} onChange={!view.on && onUpdate ? (v) => onUpdate({ rating: v }) : undefined} size={16} />
-                {!view.on && onUpdate && (
-                  <button className="link-btn" onClick={() => onUpdate({ cookedCount: (r.cookedCount ?? 0) + 1, lastCookedAt: new Date().toISOString() })}>I made this</button>
-                )}
-              </div>
-            )}
-            <Collections value={r.collections ?? []} all={allCollections} onChange={!view.on && onUpdate ? (c) => onUpdate({ collections: c }) : undefined} />
             {r.steps.length === 0 ? (
               <p className="mag-steps mag-step-text">No steps yet.</p>
             ) : (

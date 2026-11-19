@@ -3,7 +3,7 @@ import { Composition } from "./Shapes";
 
 const ASPECTS = [1.25, 0.9, 1.1, 1.4, 1, 1.2, 0.85];
 
-function hash(s: string) {
+export function hash(s: string) {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
   return Math.abs(h);
@@ -24,7 +24,7 @@ export function RecipeImage({ recipe, variant = "card" }: { recipe: Recipe; vari
   // No photo yet: a flat modernist composition in this recipe's colours.
   return (
     <div className={`placeholder rimg-${variant}`} style={variant === "card" ? { aspectRatio: `1 / ${aspect}` } : undefined} role="img" aria-label={`No photo yet for ${recipe.name}`}>
-      <Composition seed={h} ratio={variant === "card" ? aspect : 0.33} />
+      <Composition seed={variant === "card" ? h : h + 2} ratio={variant === "card" ? aspect : 1.15} />
     </div>
   );
 }

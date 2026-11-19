@@ -758,3 +758,4 @@ b, strong { font-weight: 500; } /* only 400 and 500 are loaded; no fake bold */
 .fav-chip .icon { stroke-width: 2; }
 /* Add window without step icons */
 .add-step { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.settings-version { margin: 24px 0 0; font-size: var(--small); color: var(--ink-3); text-align: center; }

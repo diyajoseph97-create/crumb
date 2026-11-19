@@ -18,7 +18,7 @@ const result = await build({
   target: "es2020",
   // Preact is a drop-in, much smaller stand-in for React (about 15 KB instead of 170 KB).
   alias: { "@": root, react: "preact/compat", "react-dom/client": "preact/compat/client", "react-dom": "preact/compat", "react/jsx-runtime": "preact/jsx-runtime" },
-  define: { "process.env.NODE_ENV": '"production"' },
+  define: { "process.env.NODE_ENV": '"production"', __CRUMB_VERSION__: JSON.stringify(new Date().toLocaleString("en-GB", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })) },
   logLevel: "error",
 });
 const js = result.outputFiles[0].text.replace(/<\/script/gi, "<\\/script");

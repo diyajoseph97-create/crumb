@@ -45,6 +45,12 @@ export async function runImport(job: ImportInput, deps: { apiKey: string; store:
   const { apiKey, store, existing, onStage } = deps;
   const ytUrl = job.code && isYouTube(job.code) ? canonicalInstagramUrl(job.code) : existing && isYouTube(existing.sourceShortcode) ? existing.sourceUrl : null;
 
+  // Never make a second recipe for a Reel that's already saved.
+  if (!existing && job.code) {
+    const dup = (await store.list()).find((r) => r.sourceShortcode === job.code);
+    if (dup) return dup;
+  }
+
   // Instagram with no video: read the Reel's public caption and cover first.
   const igCode = job.code && !isYouTube(job.code) ? job.code : existing && existing.sourceShortcode && !isYouTube(existing.sourceShortcode) ? existing.sourceShortcode : null;
   const hasVideo = job.files.some((f) => f.type.startsWith("video/"));

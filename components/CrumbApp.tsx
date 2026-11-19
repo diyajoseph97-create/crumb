@@ -81,6 +81,13 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
       .finally(() => setLoading(false));
   }, [store]);
 
+  // An older saved copy of crumbs was opened and a newer one just arrived.
+  useEffect(() => {
+    const on = () => toast("A newer version of crumbs is ready.", { label: "Reload", run: () => location.reload() });
+    window.addEventListener("crumb-updated", on);
+    return () => window.removeEventListener("crumb-updated", on);
+  }, [toast]);
+
   // Opened from the phone's share menu (Instagram → Share → Crumb).
   const pickUpShare = useCallback(async () => {
     if (viewOnly) return false;
@@ -94,7 +101,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
       return true;
     }
     if (window.location.hash !== "#shared") return false;
-    history.replaceState(null, "", window.location.pathname + window.location.search);
+    history.replaceState(null, "", window.location.pathname);
     setRoute({ page: "home" });
     const s = await takeShared();
     if (!s) {
@@ -213,9 +220,10 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
 
   // Jobs being read right now, so the same one never runs twice at once.
   const running = useRef(new Set<string>());
+  const finished = useRef(new Set<string>());
   const runJob = useCallback(
     async (job: ImportJob) => {
-      if (!geminiKey || running.current.has(job.id)) return;
+      if (!geminiKey || running.current.has(job.id) || finished.current.has(job.id)) return;
       running.current.add(job.id);
       setJobs((js) => js.map((j) => (j.id === job.id ? { ...j, status: "adding", error: undefined } : j)));
       saveJob({ ...job, status: "adding", error: undefined });
@@ -226,7 +234,8 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
         const tooLong = new Promise<never>((_, reject) => {
           timer = setTimeout(() => reject(new Error("This took too long, maybe the connection dropped. Tap Try again.")), 240000);
         });
-        const recipe = await Promise.race([runImport(job, { apiKey: geminiKey, store, existing, onStage: (stage) => setJobs((js) => js.map((j) => (j.id === job.id ? { ...j, stage } : j))) }), tooLong]).finally(() => clearTimeout(timer));
+        const recipe: Recipe = await Promise.race([runImport(job, { apiKey: geminiKey, store, existing, onStage: (stage) => setJobs((js) => js.map((j) => (j.id === job.id ? { ...j, stage } : j))) }), tooLong]).finally(() => clearTimeout(timer));
+        finished.current.add(job.id);
         setJobs((js) => js.filter((j) => j.id !== job.id));
         forgetJob(job.id);
         upsert(recipe);
@@ -346,7 +355,11 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
     if (viewOnly || loading || resumed.current) return;
     resumed.current = true;
     savedJobs().then((saved) => {
-      if (!saved.length) return;
+      saved = saved.filter((j) => {
+        if (!finished.current.has(j.id)) return true;
+        forgetJob(j.id); // finished a moment ago; just not cleared from storage yet
+        return false;
+      });
       setJobs((js) => [...js, ...saved.filter((s) => !js.some((j) => j.id === s.id))]);
       (async () => {
         for (const j of saved) if (j.status === "adding") await runJob(j); // one at a time

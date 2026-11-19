@@ -13,5 +13,5 @@
     "isolatedModules": true,
     "paths": { "@/*": ["./*"] }
   },
-  "include": ["src", "components", "lib"]
+  "include": ["src", "components", "lib", "globals.d.ts"]
 }

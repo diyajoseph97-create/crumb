@@ -19,7 +19,7 @@ function save(item, key = "latest") {
 }
 
 // Offline copy of the app. The build stamps a new version on every deploy.
-const CACHE = "crumb-3a4214e7ec";
+const CACHE = "crumb-3837f20b88";
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) =>
@@ -34,14 +34,25 @@ self.addEventListener("activate", (e) =>
 // Page: try the network first (so updates show up). With a saved copy on the
 // phone, wait at most 1.2 s on a weak connection before opening that instead;
 // the new version is saved in the background for next time.
+// Opened from the share menu (?shared=1): wait longer for the latest version, so a share is
+// never handled by an old saved copy.
 async function page(request) {
   const cache = await caches.open(CACHE);
-  const fresh = fetch(request).then((res) => {
-    if (res.ok) cache.put("./", res.clone());
+  const fromShare = new URL(request.url).searchParams.has("shared");
+  const saved = await cache.match("./");
+  const savedText = saved ? saved.clone().text() : Promise.resolve("");
+  const fresh = fetch(request).then(async (res) => {
+    if (res.ok) {
+      const copy = res.clone();
+      await cache.put("./", res.clone());
+      // Tell the open page if it was given an older copy than this one.
+      if (saved && (await copy.text()) !== (await savedText)) {
+        for (const c of await self.clients.matchAll({ type: "window" })) c.postMessage({ type: "crumb-updated" });
+      }
+    }
     return res;
   });
-  const saved = await cache.match("./");
-  const timeout = new Promise((r) => setTimeout(r, saved ? 1200 : 8000, null));
+  const timeout = new Promise((r) => setTimeout(r, saved ? (fromShare ? 8000 : 1200) : 8000, null));
   try {
     const res = await Promise.race([fresh, timeout]);
     if (res) return res;
@@ -87,7 +98,7 @@ self.addEventListener("fetch", (event) => {
       } catch (err) {
         await save({ error: String(err && err.message ? err.message : err), at }, "last").catch(() => {});
       }
-      return Response.redirect(new URL("./#shared", self.registration.scope).href, 303);
+      return Response.redirect(new URL("./?shared=1#shared", self.registration.scope).href, 303);
     })(),
   );
 });

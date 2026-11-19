@@ -50,6 +50,10 @@ export function takeShared(): Promise<Shared | null> {
 
 export function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
+  // The page was opened from an older saved copy and a newer crumbs has just arrived.
+  navigator.serviceWorker.addEventListener("message", (e) => {
+    if (e.data?.type === "crumb-updated") window.dispatchEvent(new Event("crumb-updated"));
+  });
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("sw.js").catch(() => {});
   });

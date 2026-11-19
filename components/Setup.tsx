@@ -146,6 +146,7 @@ export function SettingsPanel({ onClose, onRestored, onKeyChange, recipes = [] }
       </div>
 
       {msg && <p className={msg.bad ? "form-error" : "form-ok"} role="status">{msg.text}</p>}
+      <p className="settings-version">Version {__CRUMB_VERSION__}</p>
     </div>
   );
 }

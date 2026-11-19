@@ -61,7 +61,6 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
   const [jobs, setJobs] = useState<ImportJob[]>([]);
   const [shopOpen, setShopOpen] = useState(false);
   const shopCount = useShoppingCount();
-  const allCollections = [...new Set(recipes.flatMap((r) => r.collections ?? []))].sort((a, b) => a.localeCompare(b));
 
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -486,7 +485,6 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
         hasKey={Boolean(geminiKey)}
         onShare={viewOnly ? undefined : () => shareRecipe(current)}
         onUpdate={viewOnly ? undefined : async (patch) => upsert(await store.update(current.id, patch))}
-        allCollections={allCollections}
         onSetPhoto={viewOnly ? undefined : async (dataUrl) => {
           const url = await store.uploadImage((await cleanPhoto(dataUrl)) ?? dataUrl);
           upsert(await store.update(current.id, { imageUrl: url }));

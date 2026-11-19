@@ -11,7 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Recipe } from "@/lib/types";
 import { formatMinutes, missingParts, isIncomplete, totalIsPartial, totalMinutes } from "@/lib/recipe-utils";
 import { scaleFactor, scaleLine, splitIngredient } from "@/lib/scale";
-import { ConfirmDialog, Icon, Modal, OverflowMenu, PixelIcon, Stamp, dietIcon, useViewOnly } from "./ui";
+import { ConfirmDialog, Icon, Modal, PixelIcon, Stamp, dietIcon, useViewOnly } from "./ui";
 import { RecipeImage } from "./RecipeImage";
 
 type Props = {
@@ -29,8 +29,6 @@ type Props = {
   hasKey?: boolean;
   /** Save changes made right on the page (notes, collections, cooked, rating). */
   onUpdate?: (patch: Partial<Recipe>) => void;
-  /** Names of all your collections, for suggestions. */
-  allCollections?: string[];
   /** Save a photo picked for a recipe that has none. */
   onSetPhoto?: (dataUrl: string) => void;
   /** Make and send a view-only link to this recipe. */
@@ -82,10 +80,8 @@ function ReelLink({ url, onSetLink }: { url: string | null; onSetLink: (url: str
 
 const est = (flag: boolean | undefined, v: number | null) => (flag && v != null ? "~" : "");
 
-export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite, onAddScreenshots, onSetLink, fillJob, onRetryFill, hasKey, ensureTips, onShare, onSetPhoto, onUpdate, allCollections = [] }: Props) {
+export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite, onAddScreenshots, onSetLink, fillJob, onRetryFill, hasKey, ensureTips, onShare, onSetPhoto, onUpdate }: Props) {
   const view = useViewOnly();
-  const [addingColl, setAddingColl] = useState(false);
-  const canEditColl = !view.on && !!onUpdate;
   const [tipsState, setTipsState] = useState<"idle" | "loading" | "failed">("idle");
   useEffect(() => {
     if (!ensureTips || r.healthTips?.length || !hasKey || r.ingredients.length === 0) return;
@@ -207,15 +203,7 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
             <div className="rp-tools">
               {!view.on && <button className="icon-btn" onClick={onEdit} aria-label="Edit recipe" title="Edit recipe"><Icon name="edit" size={19} /></button>}
               {!view.on && <button className="icon-btn danger" onClick={() => setConfirm(true)} aria-label="Delete recipe" title="Delete recipe"><Icon name="trash" size={19} /></button>}
-              {(canEditColl || (!view.on && onShare)) && (
-                <OverflowMenu
-                  label="More actions for this recipe"
-                  items={[
-                    ...(canEditColl ? [{ label: "Add to collection", onSelect: () => setAddingColl(true) }] : []),
-                    ...(!view.on && onShare ? [{ label: "Share a view-only link", onSelect: onShare }] : []),
-                  ]}
-                />
-              )}
+              {!view.on && onShare && <button className="icon-btn" onClick={onShare} aria-label="Share a view-only link" title="Share a view-only link"><Icon name="share" size={19} /></button>}
             </div>
           </div>
 
@@ -259,9 +247,7 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
 
           <div className="rp-actions">
             <button className="btn btn-primary btn-lg" onClick={() => setCooking(true)}>Start cooking</button>
-            {addingColl && canEditColl && <Collections value={r.collections ?? []} all={allCollections} onChange={(c) => onUpdate!({ collections: c })} onDone={() => setAddingColl(false)} />}
           </div>
-          <CollectionChips value={r.collections ?? []} onChange={!view.on && onUpdate ? (c) => onUpdate({ collections: c }) : undefined} />
 
         </aside>
 
@@ -400,37 +386,6 @@ function MyNotes({ value, onSave }: { value: string; onSave: (t: string) => void
   );
 }
 
-/** "Add to collection" (chosen from the ⋯ menu): a name box in the action row. */
-function Collections({ value, all, onChange, onDone }: { value: string[]; all: string[]; onChange: (c: string[]) => void; onDone: () => void }) {
-  const [name, setName] = useState("");
-  const add = () => {
-    const n = name.trim();
-    if (n && !value.includes(n)) onChange([...value, n]);
-    onDone();
-  };
-  return (
-    <form className="coll-add" onSubmit={(e) => { e.preventDefault(); add(); }}>
-      <input autoFocus list="coll-list" value={name} onChange={(e) => setName((e.target as HTMLInputElement).value)} onBlur={add} onKeyDown={(e) => { if (e.key === "Escape") onDone(); }} placeholder="Collection name" aria-label="Collection name" maxLength={40} />
-      <datalist id="coll-list">{all.filter((c) => !value.includes(c)).map((c) => <option key={c} value={c} />)}</datalist>
-    </form>
-  );
-}
-
-/** The collections this recipe is in, under the buttons. */
-function CollectionChips({ value, onChange }: { value: string[]; onChange?: (c: string[]) => void }) {
-  if (value.length === 0) return null;
-  return (
-    <div className="collections">
-      <span className="label">In</span>
-      {value.map((c) => (
-        <span key={c} className="coll-chip">
-          {c}
-          {onChange && <button aria-label={`Remove from ${c}`} onClick={() => onChange(value.filter((x) => x !== c))}><Icon name="x" size={11} /></button>}
-        </span>
-      ))}
-    </div>
-  );
-}
 
 /** Untick what you already have; the rest goes on the shopping list. */
 function ShopPicker({ recipeId, lines, onList, onDone, onClose }: { recipeId: string; lines: string[]; onList: boolean; onDone: (keep: boolean[] | null) => void; onClose: () => void }) {

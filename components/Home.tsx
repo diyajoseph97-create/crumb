@@ -121,7 +121,6 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
   const ingredients = useMemo(() => allIngredients(recipes), [recipes]);
   // Everything set inside the Filters sheet (meal buttons are counted separately).
   const quickMeal = filters.meals.length === 1 && (QUICK_MEALS as readonly string[]).includes(filters.meals[0]);
-  const collections = useMemo(() => [...new Set(recipes.flatMap((r) => r.collections ?? []))].sort((a, b) => a.localeCompare(b)), [recipes]);
   const sheetCount = (filters.untried ? 1 : 0) + filters.include.length + filters.exclude.length + filters.times.length + filters.cuisines.length + filters.tags.length + (quickMeal ? 0 : filters.meals.length);
   const set = (patch: Partial<Filters>) => setFilters({ ...filters, ...patch });
   const clearAll = () => setFilters({ ...EMPTY_FILTERS, query: filters.query });
@@ -138,7 +137,6 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
 
   const chips: { key: string; label: string; tone: string; remove: () => void }[] = [
     ...(filters.untried ? [{ key: "untried", label: "Not made yet", tone: "", remove: () => set({ untried: false }) }] : []),
-    ...filters.collections.map((c) => ({ key: "c" + c, label: c, tone: "", remove: () => set({ collections: filters.collections.filter((x) => x !== c) }) })),
     ...filters.include.map((x) => ({ key: "i" + x, label: `With ${displayName(x)}`, tone: "", remove: () => set({ include: filters.include.filter((y) => y !== x) }) })),
     ...filters.exclude.map((x) => ({ key: "e" + x, label: `No ${displayName(x)}`, tone: "tomato", remove: () => set({ exclude: filters.exclude.filter((y) => y !== x) }) })),
   ];
@@ -185,19 +183,6 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
           <Dropdown className="sort" label="Sort by" prefix="Sort by" value={sort} options={SORTS} onChange={(v) => setSort(v as Sort)} />
         </div>
 
-        {collections.length > 0 && (
-          <div className="coll-row" role="group" aria-label="Collections">
-            <span className="label">Collections</span>
-            {collections.map((c) => {
-              const on = filters.collections.includes(c);
-              return (
-                <button key={c} className={`quick-cat ${on ? "on" : ""}`} aria-pressed={on} onClick={() => set({ collections: on ? filters.collections.filter((x) => x !== c) : [...filters.collections, c] })}>
-                  {c}
-                </button>
-              );
-            })}
-          </div>
-        )}
 
         <div className="browse-bar">
           <p className="result-count">

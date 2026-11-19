@@ -10,6 +10,9 @@ type Props = {
   ingredients: { name: string; count: number }[];
 };
 
+// Everyday basics that are in almost every recipe: not useful as suggestions.
+const STAPLES = new Set(["salt", "pepper", "black pepper", "oil", "olive oil", "vegetable oil", "cooking oil", "water", "sugar", "garlic", "onion", "ginger", "ginger-garlic paste", "butter", "ghee", "turmeric", "cumin", "green chilli", "chilli powder", "coriander"]);
+
 const toggle = (list: string[], v: string) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
 
 function IngredientPicker({
@@ -23,7 +26,7 @@ function IngredientPicker({
     const nq = normaliseName(q);
     return ingredients
       .filter((i) => !selected.includes(i.name) && !exclude.includes(i.name))
-      .filter((i) => !q || i.name.includes(q.toLowerCase()) || i.name.includes(nq))
+      .filter((i) => (q ? i.name.includes(q.toLowerCase()) || i.name.includes(nq) : !STAPLES.has(i.name)))
       .slice(0, q ? 8 : 6);
   }, [q, ingredients, selected, exclude]);
 
@@ -70,6 +73,12 @@ export function FilterPanel({ filters: f, setFilters, ingredients }: Props) {
   const set = (patch: Partial<Filters>) => setFilters({ ...f, ...patch });
   return (
     <div className="filters">
+      <section className="fgroup">
+        <h3 className="fgroup-title">Cooking history</h3>
+        <div className="chip-wrap">
+          <ToggleChip label="Not made yet" on={f.untried} onClick={() => set({ untried: !f.untried })} />
+        </div>
+      </section>
       <section className="fgroup">
         <h3 className="fgroup-title">Ingredients</h3>
         <IngredientPicker

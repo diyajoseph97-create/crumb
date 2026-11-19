@@ -11,6 +11,7 @@ import { takeShared } from "@/lib/share";
 import { compactPhoto } from "@/lib/image";
 import { suggestHealthier } from "@/lib/gemini";
 import { canShare, makeShareLink, sendLink } from "@/lib/sharing";
+import { ShoppingList, useShoppingCount } from "./ShoppingList";
 import { onRemoteChanges, onSyncStatus, getSyncStatus, type SyncStatus } from "@/lib/sync";
 import { forgetJob, newJob, runImport, saveJob, savedJobs, type ImportInput, type ImportJob } from "@/lib/importer";
 import { isSavedForLater, isYouTube } from "@/lib/recipe-utils";
@@ -57,6 +58,9 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
   const [add, setAdd] = useState<{ open: boolean; fill: Recipe | null; shared?: { url: string; caption: string; files: File[] } | null }>({ open: false, fill: null });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [jobs, setJobs] = useState<ImportJob[]>([]);
+  const [shopOpen, setShopOpen] = useState(false);
+  const shopCount = useShoppingCount();
+  const allCollections = [...new Set(recipes.flatMap((r) => r.collections ?? []))].sort((a, b) => a.localeCompare(b));
 
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -78,7 +82,17 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
 
   // Opened from the phone's share menu (Instagram → Share → Crumb).
   const pickUpShare = useCallback(async () => {
-    if (viewOnly || window.location.hash !== "#shared") return false;
+    if (viewOnly) return false;
+    // iPhone: an Apple Shortcut in the share menu opens Crumb with ?add=<link or text>.
+    const added = new URLSearchParams(window.location.search).get("add");
+    if (added) {
+      history.replaceState(null, "", window.location.pathname);
+      setRoute({ page: "home" });
+      const link = added.match(IG_LINK)?.[0] || "";
+      setPendingShare({ url: link, caption: added.replace(link, "").trim(), files: [] });
+      return true;
+    }
+    if (window.location.hash !== "#shared") return false;
     history.replaceState(null, "", window.location.pathname + window.location.search);
     setRoute({ page: "home" });
     const s = await takeShared();
@@ -390,6 +404,13 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
         fillJob={jobs.find((j) => j.fillId === current.id) ?? null}
         hasKey={Boolean(geminiKey)}
         onShare={viewOnly ? undefined : () => shareRecipe(current)}
+        onUpdate={viewOnly ? undefined : async (patch) => upsert(await store.update(current.id, patch))}
+        allCollections={allCollections}
+        onSetPhoto={viewOnly ? undefined : async (dataUrl) => {
+          const url = await store.uploadImage(dataUrl);
+          upsert(await store.update(current.id, { imageUrl: url }));
+          toast("Photo added");
+        }}
         ensureTips={viewOnly ? undefined : ensureTips}
         onRetryFill={(j) => runJob(j)}
         onSetLink={async (url) => {
@@ -417,11 +438,21 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
           <span className="wordmark-title">{viewOnly ? viewOnly.title : "Crumb's Cookbook"}</span>
           <span className="wordmark-sub">{viewOnly ? "Shared with you · view only" : "A little home for all your saved recipes."}</span>
         </button>
+        {viewOnly && (
+          <button className="settings-link list-link" onClick={() => setShopOpen(true)}>
+            List{shopCount ? ` (${shopCount})` : ""} <span aria-hidden="true">→</span>
+          </button>
+        )}
         {!viewOnly && <div className="topbar-stickers">
+          <div className="topbar-links">
+          <button className="settings-link list-link" onClick={() => setShopOpen(true)} aria-label={`Shopping list${shopCount ? `, ${shopCount} recipes` : ""}`}>
+            List{shopCount ? ` (${shopCount})` : ""} <span aria-hidden="true">→</span>
+          </button>
           <button className="settings-link" onClick={() => setSettingsOpen(true)} aria-label="Settings">
             Settings <span aria-hidden="true">→</span>
             {sync.state === "paused" && <span className="sync-dot" title="Sync paused" aria-label="Sync paused" />}
           </button>
+          </div>
           <CircleBadge
             className="add-btn"
             text="ADD A RECIPE · ADD A RECIPE · "
@@ -477,6 +508,9 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
           </div>
         ))}
       </div>
+      <Modal open={shopOpen} onClose={() => setShopOpen(false)} label="Shopping list" variant="sheet">
+        <ShoppingList onClose={() => setShopOpen(false)} onOpen={(id) => { setShopOpen(false); go(`recipe-${id}`); }} />
+      </Modal>
     </div>
     </ViewOnlyContext.Provider>
   );

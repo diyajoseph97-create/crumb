@@ -17,10 +17,17 @@ Open Crumb and paste a free **Gemini API key** from **aistudio.google.com/apikey
 - **Instagram:** download the Reel, drop it in, and add its link and caption (the caption usually has the amounts).
 - It's added in the background: an "Adding recipe…" card appears and becomes the recipe when ready.
 - **On Android:** install Crumb from Chrome (⋮ → Install app) and share Reels, videos or YouTube links to it.
+- **On iPhone:** make an Apple Shortcut that opens `https://diyajoseph97-create.github.io/crumb/?add=` + the shared link (steps in **Settings → Phone app**).
 - Ingredients, amounts and steps are never guessed. Anything missing is marked **Needs details**.
 
+## Cooking
+- **Start cooking**: big-text checklist, then one step at a time; keeps the screen awake.
+- **Add to list**: builds one shopping list across recipes (copy or share it).
+- Switch amounts between as written, grams & ml, or cups & oz.
+- Mark **I made this**, rate it, add **My notes** (private, never shared) and put recipes in **Collections**.
+
 ## Backups (important)
-Recipes live only in this browser. **Settings → Download a backup** saves everything as one file; **Restore from backup** brings it back in any browser.
+Recipes live only in this browser. **Settings → Backup → Download a backup** saves everything as one file; **Restore from backup** brings it back in any browser.
 
 ## Sync across devices (optional, Supabase)
 Recipes stay on each device; Supabase keeps your devices in step. If the free project pauses after a quiet week, Crumb keeps working and catches up once you restore the project on supabase.com.
@@ -48,13 +55,17 @@ create trigger recipes_touch before insert or update on public.recipes
 create index if not exists recipes_sync_idx on public.recipes (user_id, synced_at);
 ```
 3. **Authentication → URL Configuration:** Site URL and Redirect URL = `https://diyajoseph97-create.github.io/crumb/`.
-4. In Crumb: **Settings → Sync across devices**, paste the Project URL and the **publishable** key (never the secret key), then sign in with your email. On other devices use **Set up another device**, then sign in with the same email.
+4. In Crumb: **Settings → Sync & sharing**, paste the Project URL and the **publishable** key (never the secret key), then sign in with your email. On other devices use **Set up another device**, then sign in with the same email.
 
-Optional: to sign in with a 6-digit code instead of the link (handy inside the installed app), add `{{ .Token }}` to the **Magic Link** and **Confirm signup** email templates.
+5. Run `supabase/update-2.sql` too (lets your Gemini key follow you to other devices and keeps My notes out of shared links).
+
+Crumb asks for a 6-digit code: add `{{ .Token }}` to the **Magic Link** and **Confirm signup** email templates so the email includes it.
+
+To skip pasting the Project URL on every device, put the URL and **publishable** key in `lib/cloud-config.ts` (both are safe to be public; never the secret key).
 
 ## View-only sharing (needs sync)
 Open `supabase/sharing.sql`, copy all of it into Supabase's **SQL Editor** and click **Run** (safe to run again).
-Then **Settings → Share your cookbook** (or **Share** on a recipe) makes a link. People who open it can browse but not change anything. **Stop sharing** turns a link off.
+Then **Settings → Sync & sharing → Share your cookbook** (or **Share** on a recipe) makes a link. People who open it can browse but not change anything. **Stop sharing** turns a link off.
 
 ## Changing the code
 ```

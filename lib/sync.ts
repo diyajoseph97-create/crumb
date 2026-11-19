@@ -4,7 +4,8 @@
 import type { Recipe } from "./types";
 import { onLocalChange, raw } from "./local-store";
 import { normaliseRecipe } from "./validate";
-import { CloudError, getConfig, getSession, pullRows, pushRows, type Row } from "./cloud";
+import { CloudError, getConfig, getRemoteKey, getSession, pullRows, pushRows, type Row } from "./cloud";
+import { getGeminiKey, setGeminiKey } from "./local-store";
 
 export type SyncStatus =
   | { state: "off" } // not set up on this device
@@ -183,6 +184,14 @@ export function syncNow(): Promise<void> {
       }
       if (changed) remoteListeners.forEach((fn) => fn());
       setStatus({ state: "synced", at: Date.now() });
+      // No key on this device yet? Use the one you shared from another device.
+      if (!getGeminiKey()) {
+        const k = await getRemoteKey().catch(() => null);
+        if (k) {
+          setGeminiKey(k);
+          window.dispatchEvent(new CustomEvent("crumb-key-changed", { detail: k }));
+        }
+      }
     } catch (e) {
       if (e instanceof CloudError && e.status === 401 && !getSession()) return setStatus({ state: "signed-out" });
       setStatus({ state: "paused", message: describe(e), at: Date.now() });

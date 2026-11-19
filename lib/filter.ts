@@ -12,6 +12,9 @@ export type Filters = {
   times: string[]; // TIME_RANGES ids
   tags: string[];
   favourites: boolean;
+  collections: string[];
+  /** Only recipes you haven't cooked yet. */
+  untried: boolean;
 };
 
 export const EMPTY_FILTERS: Filters = {
@@ -24,12 +27,14 @@ export const EMPTY_FILTERS: Filters = {
   times: [],
   tags: [],
   favourites: false,
+  collections: [],
+  untried: false,
 };
 
 export function activeFilterCount(f: Filters) {
   return (
     f.include.length + f.exclude.length + f.cuisines.length + f.meals.length +
-    f.times.length + f.tags.length + (f.favourites ? 1 : 0)
+    f.times.length + f.tags.length + (f.favourites ? 1 : 0) + f.collections.length + (f.untried ? 1 : 0)
   );
 }
 
@@ -61,6 +66,8 @@ export function applyFilters(recipes: Recipe[], f: Filters): Recipe[] {
   const words = f.query.toLowerCase().split(/\s+/).filter(Boolean);
   return recipes.filter((r) => {
     if (f.favourites && !r.favourite) return false;
+    if (f.untried && (r.cookedCount ?? 0) > 0) return false;
+    if (f.collections.length && !f.collections.some((c) => (r.collections ?? []).includes(c))) return false;
 
     if (words.length) {
       const hay = searchText(r);

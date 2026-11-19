@@ -1,6 +1,6 @@
 // Crumb starts here: a welcome screen the first time (Gemini key, or skip),
 // then your cookbook, saved in this browser.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { CrumbApp } from "@/components/CrumbApp";
 import { SettingsPanel, Welcome } from "@/components/Setup";
@@ -22,6 +22,12 @@ function Root() {
     }
   });
   const [reloadKey, setReloadKey] = useState(0);
+  // A key shared from your other devices arrives through sync.
+  useEffect(() => {
+    const on = (e: Event) => setKey((e as CustomEvent<string>).detail);
+    window.addEventListener("crumb-key-changed", on);
+    return () => window.removeEventListener("crumb-key-changed", on);
+  }, []);
 
   if (!welcomed) {
     return (

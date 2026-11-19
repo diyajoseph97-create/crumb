@@ -23,7 +23,7 @@ function RecipeCardView({
           <RecipeImage recipe={recipe} />
           {incomplete && (
             <span className="card-incomplete" title="A few details are missing">
-              <Icon name="pen" size={12} /> Needs a little finishing touch
+              <Icon name="pen" size={12} /> <span className="ci-text">Needs a little finishing touch</span>
             </span>
           )}
         </div>

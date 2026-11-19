@@ -305,7 +305,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
                   <Icon name="edit" size={18} /> I'll add it manually
                 </button>
               )}
-              <button type="submit" className="btn btn-primary btn-lg grow" disabled={!hasMaterial && !code}>
+              <button type="submit" className="btn btn-primary btn-lg grow">
                 <Icon name="plus" size={18} /> {fillRecipe ? "Fill in the missing bits" : "Save to Crumb"}
               </button>
             </div>

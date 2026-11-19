@@ -3,26 +3,26 @@
 // of large-photo recipe cards.
 import { useEffect, useMemo, useState } from "react";
 import type { Recipe } from "@/lib/types";
-import { CUISINES, TAGS, TIME_RANGES } from "@/lib/constants";
 import { activeFilterCount, allIngredients, applyFilters, EMPTY_FILTERS, type Filters } from "@/lib/filter";
 import { displayName } from "@/lib/synonyms";
 import { isSavedForLater, isYouTube, totalMinutes } from "@/lib/recipe-utils";
 import { Doodle, Icon, Modal, useViewOnly } from "./ui";
 import { TableScene } from "./Porcelain";
-import { Dropdown } from "./Dropdown";
 import { Marquee } from "./Stickers";
 import { FilterPanel } from "./FilterPanel";
 import { JobCard, RecipeCard } from "./RecipeCard";
+import { Masonry } from "./Masonry";
 import type { ImportJob } from "@/lib/importer";
 
 const QUICK_MEALS = ["All recipes", "Breakfast", "Lunch", "Dinner", "Snacks", "Desserts"] as const;
 
-type Sort = "recent" | "az" | "quickest" | "favourites";
+type Sort = "recent" | "az" | "quickest" | "favourites" | "made";
 const SORTS: { value: Sort; label: string }[] = [
   { value: "recent", label: "Recently added" },
   { value: "az", label: "A–Z" },
   { value: "quickest", label: "Quickest first" },
   { value: "favourites", label: "Favourites" },
+  { value: "made", label: "Most made" },
 ];
 function sortRecipes(list: Recipe[], sort: Sort): Recipe[] {
   if (sort === "recent") return list; // already newest first
@@ -30,6 +30,7 @@ function sortRecipes(list: Recipe[], sort: Sort): Recipe[] {
   if (sort === "az") copy.sort((a, b) => a.name.localeCompare(b.name));
   if (sort === "quickest") copy.sort((a, b) => (totalMinutes(a) ?? Infinity) - (totalMinutes(b) ?? Infinity));
   if (sort === "favourites") copy.sort((a, b) => Number(b.favourite) - Number(a.favourite));
+  if (sort === "made") copy.sort((a, b) => (b.cookedCount ?? 0) - (a.cookedCount ?? 0) || (b.rating ?? 0) - (a.rating ?? 0));
   return copy;
 }
 
@@ -120,22 +121,27 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
   const results = useMemo(() => sortRecipes(applyFilters(recipes, filters), sort), [recipes, filters, sort]);
   const ingredients = useMemo(() => allIngredients(recipes), [recipes]);
   const count = activeFilterCount(filters);
-  const ingCount = filters.include.length + filters.exclude.length;
+  // Everything set inside the Filters sheet (meal buttons are counted separately).
+  const quickMeal = filters.meals.length === 1 && (QUICK_MEALS as readonly string[]).includes(filters.meals[0]);
+  const collections = useMemo(() => [...new Set(recipes.flatMap((r) => r.collections ?? []))].sort((a, b) => a.localeCompare(b)), [recipes]);
+  const sheetCount = (filters.untried ? 1 : 0) + filters.include.length + filters.exclude.length + filters.times.length + filters.cuisines.length + filters.tags.length + (quickMeal ? 0 : filters.meals.length);
   const set = (patch: Partial<Filters>) => setFilters({ ...filters, ...patch });
   const clearAll = () => setFilters({ ...EMPTY_FILTERS, query: filters.query });
 
-  // Round-robin into columns keeps newest-first order reading left to right.
-  // Recipes still being added come first, then the cookbook.
-  type Item = { job: ImportJob } | { recipe: Recipe };
-  const columns = useMemo(() => {
-    const c: Item[][] = Array.from({ length: cols }, () => []);
-    const items: Item[] = [...jobs.map((job) => ({ job })), ...results.map((recipe) => ({ recipe }))];
-    items.forEach((it, i) => c[i % cols].push(it));
-    return c;
-  }, [results, cols, jobs]);
+  // Recipes still being added come first, then the cookbook (one list, in reading order).
+  const gridItems = useMemo(
+    () => [
+      ...jobs.map((job) => ({ key: job.id, node: <JobCard job={job} onRetry={() => onRetryJob?.(job)} onDismiss={() => onDismissJob?.(job)} /> })),
+      ...results.map((r) => ({ key: r.id, node: <RecipeCard recipe={r} onOpen={() => onOpen(r.id)} onFavourite={() => onFavourite(r)} /> })),
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [results, jobs],
+  );
 
   const chips: { key: string; label: string; tone: string; remove: () => void }[] = [
     ...(filters.favourites ? [{ key: "fav", label: "Favourites", tone: "green", remove: () => set({ favourites: false }) }] : []),
+    ...(filters.untried ? [{ key: "untried", label: "Not made yet", tone: "", remove: () => set({ untried: false }) }] : []),
+    ...filters.collections.map((c) => ({ key: "c" + c, label: c, tone: "", remove: () => set({ collections: filters.collections.filter((x) => x !== c) }) })),
     ...filters.include.map((x) => ({ key: "i" + x, label: `With ${displayName(x)}`, tone: "", remove: () => set({ include: filters.include.filter((y) => y !== x) }) })),
     ...filters.exclude.map((x) => ({ key: "e" + x, label: `No ${displayName(x)}`, tone: "tomato", remove: () => set({ exclude: filters.exclude.filter((y) => y !== x) }) })),
   ];
@@ -143,7 +149,7 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
 
   return (
     <div className="home">
-      <section className="hero-panel">
+      <section className={`hero-panel ${recipes.length > 0 && !viewOnly ? "hero-compact" : ""}`}>
         <div className="hero-copy">
           {viewOnly ? (
             <>
@@ -199,6 +205,11 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
         </label>
 
         <div className="quick-cats" role="group" aria-label="Meal">
+          {!viewOnly && (
+            <button className={`quick-cat quick-fav ${filters.favourites ? "on" : ""}`} aria-pressed={filters.favourites} onClick={() => set({ favourites: !filters.favourites })}>
+              <Icon name="heart" size={13} filled={filters.favourites} /> Favourites
+            </button>
+          )}
           {QUICK_MEALS.map((m) => {
             const on = m === "All recipes" ? filters.meals.length === 0 : filters.meals.length === 1 && filters.meals[0] === m;
             return (
@@ -207,17 +218,26 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
               </button>
             );
           })}
-        </div>
-
-        <div className="filter-row">
-          <Dropdown allLabel="All times" options={TIME_RANGES.map((t) => ({ value: t.id, label: t.label }))} selected={filters.times} onChange={(v) => set({ times: v })} />
-          <Dropdown allLabel="All cuisines" options={CUISINES.map((c) => ({ value: c, label: c }))} selected={filters.cuisines} onChange={(v) => set({ cuisines: v })} />
-          <Dropdown allLabel="All diets" options={TAGS.map((t) => ({ value: t, label: t }))} selected={filters.tags} onChange={(v) => set({ tags: v })} />
-          <button className="dd-btn dd-more filters-toggle" onClick={() => setSheet(true)}>
-            <span className="dd-label">Filter recipes{ingCount ? ` (${ingCount})` : ""}</span>
-            <Icon name="filter" size={18} />
+          <button className={`quick-cat filters-toggle ${sheetCount ? "on-soft" : ""}`} onClick={() => setSheet(true)}>
+            <Icon name="filter" size={15} /> Filter recipes{sheetCount ? ` (${sheetCount})` : ""}
           </button>
         </div>
+
+        {collections.length > 0 && (
+          <div className="coll-row" role="group" aria-label="Collections">
+            <span className="coll-row-label">Collections</span>
+            {collections.map((c) => {
+              const on = filters.collections.includes(c);
+              return (
+                <button key={c} className={`coll-chip ${on ? "on" : ""}`} aria-pressed={on} onClick={() => set({ collections: on ? filters.collections.filter((x) => x !== c) : [...filters.collections, c] })}>
+                  <Icon name="bookmark" size={12} /> {c}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+
 
         <div className="collection-head">
           <div>
@@ -293,19 +313,7 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
         )}
 
         {!loading && (results.length > 0 || jobs.length > 0) && (
-          <div className="masonry">
-            {columns.map((col, c) => (
-              <div className="mcol" key={c}>
-                {col.map((it) =>
-                  "job" in it ? (
-                    <JobCard key={it.job.id} job={it.job} onRetry={() => onRetryJob?.(it.job)} onDismiss={() => onDismissJob?.(it.job)} />
-                  ) : (
-                    <RecipeCard key={it.recipe.id} recipe={it.recipe} onOpen={() => onOpen(it.recipe.id)} onFavourite={() => onFavourite(it.recipe)} />
-                  ),
-                )}
-              </div>
-            ))}
-          </div>
+          <Masonry cols={cols} items={gridItems} />
         )}
       </section>
 

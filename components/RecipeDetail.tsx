@@ -2,6 +2,10 @@
 // ruled boxes, typewriter ingredient list (quantity first), a coloured
 // method panel with "STEP 1." labels, and a footer strip with time & servings.
 import { isYouTube } from "@/lib/recipe-utils";
+import { resizeImage } from "@/lib/image";
+import { convertLine, type UnitSystem } from "@/lib/units";
+import { addToList, isOnList, onListChange, removeFromList } from "@/lib/shopping";
+import { CookMode, Stars } from "./CookMode";
 import type { ImportJob } from "@/lib/importer";
 import { useEffect, useState } from "react";
 import type { Recipe } from "@/lib/types";
@@ -23,6 +27,12 @@ type Props = {
   fillJob?: ImportJob | null;
   onRetryFill?: (j: ImportJob) => void;
   hasKey?: boolean;
+  /** Save changes made right on the page (notes, collections, cooked, rating). */
+  onUpdate?: (patch: Partial<Recipe>) => void;
+  /** Names of all your collections, for suggestions. */
+  allCollections?: string[];
+  /** Save a photo picked for a recipe that has none. */
+  onSetPhoto?: (dataUrl: string) => void;
   /** Make and send a view-only link to this recipe. */
   onShare?: () => void;
   /** Fetch healthier-swap ideas if this recipe doesn't have any yet. */
@@ -72,7 +82,7 @@ function ReelLink({ url, onSetLink }: { url: string | null; onSetLink: (url: str
 
 const est = (flag: boolean | undefined, v: number | null) => (flag && v != null ? "~" : "");
 
-export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite, onAddScreenshots, onSetLink, fillJob, onRetryFill, hasKey, ensureTips, onShare }: Props) {
+export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite, onAddScreenshots, onSetLink, fillJob, onRetryFill, hasKey, ensureTips, onShare, onSetPhoto, onUpdate, allCollections = [] }: Props) {
   const view = useViewOnly();
   const [tipsState, setTipsState] = useState<"idle" | "loading" | "failed">("idle");
   useEffect(() => {
@@ -84,10 +94,31 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [r.id, r.healthTips, hasKey]);
   const [servings, setServings] = useState<number>(r.servings ?? 1);
+  const [units, setUnitsState] = useState<UnitSystem>(() => {
+    try { return (localStorage.getItem("crumb-units") as UnitSystem) || "as-written"; } catch { return "as-written"; }
+  });
+  const setUnits = (u: UnitSystem) => { setUnitsState(u); try { localStorage.setItem("crumb-units", u); } catch {} };
+  const [cooking, setCooking] = useState(false);
+  const [onList, setOnList] = useState(isOnList(r.id));
+  useEffect(() => {
+    setOnList(isOnList(r.id));
+    const off = onListChange(() => setOnList(isOnList(r.id)));
+    return () => { off(); };
+  }, [r.id]);
   const [confirm, setConfirm] = useState(false);
   const factor = r.servings ? scaleFactor(r.servings, servings) : 1;
-  const lines = r.ingredients.map((i) => ({ ...i, scaled: scaleLine(i.original, factor) }));
-  const unscalable = lines.filter((l) => l.scaled.status === "unscalable").length;
+  const lines = r.ingredients.map((i) => {
+    const scaled = scaleLine(i.original, factor);
+    return { ...i, scaled, shown: convertLine(scaled.text, units) };
+  });
+  const servingsLabel = r.servings ? `For ${servings} ${servings === 1 ? "person" : "people"}` : "Servings not given";
+  function toggleList() {
+    if (onList) removeFromList(r.id);
+    else addToList({ id: r.id, name: r.name, servings: r.servings ? servings : null, lines: lines.map((l) => ({ text: l.shown, canonical: l.canonical })) });
+  }
+  // Only point out amounts that can't scale when the servings have actually been changed.
+  const changed = factor !== 1;
+  const unscalable = changed ? lines.filter((l) => l.scaled.status === "unscalable").length : 0;
   const total = totalMinutes(r);
   const missing = missingParts(r);
   const incomplete = isIncomplete(r);
@@ -104,7 +135,14 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
             <Icon name="back" size={18} /> All recipes
           </button>
         ) : <span />}
-        {view.on ? <span className="view-only-pill">View only</span> : <div className="row gap-xs wrap end">
+        <div className="row gap-xs wrap end">
+          <button className="btn btn-primary btn-sm" onClick={() => setCooking(true)}>
+            <Icon name="chef" size={15} /> Start cooking
+          </button>
+          <button className={`btn btn-outline btn-sm ${onList ? "on-list" : ""}`} onClick={toggleList} aria-pressed={onList}>
+            <Icon name={onList ? "check" : "list"} size={15} /> {onList ? "On your list" : "Add to list"}
+          </button>
+        {view.on ? <span className="view-only-pill">View only</span> : <>
           <button className={`btn btn-outline btn-sm fav-toggle ${r.favourite ? "on" : ""}`} onClick={onFavourite} aria-pressed={r.favourite}>
             <Icon name="heart" size={15} filled={r.favourite} /> {r.favourite ? "Favourite" : "Add to favourites"}
           </button>
@@ -119,7 +157,8 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
           <button className="icon-btn lg" onClick={() => setConfirm(true)} aria-label="Delete recipe" title="Delete">
             <Icon name="trash" />
           </button>
-        </div>}
+        </>}
+        </div>
       </div>
 
       {fillJob ? (
@@ -182,25 +221,32 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
                 </button>
               )}
             </div>
+            {lines.length > 0 && (
+              <div className="units" role="group" aria-label="Units">
+                {([["as-written", "As written"], ["metric", "Grams & ml"], ["us", "Cups & oz"]] as [UnitSystem, string][]).map(([u, label]) => (
+                  <button key={u} className={units === u ? "on" : ""} aria-pressed={units === u} onClick={() => setUnits(u)}>{label}</button>
+                ))}
+              </div>
+            )}
             {lines.length === 0 ? (
               <p className="mag-small mag-pad">No ingredients yet.</p>
             ) : (
               <ul className="mag-ings">
                 {lines.map((l) => {
-                  const { qty, name } = splitIngredient(l.scaled.text);
+                  const { qty, name } = splitIngredient(l.shown);
                   return (
-                    <li key={l.id} className={`${l.scaled.status === "scaled" ? "is-scaled" : ""} ${l.scaled.status === "unscalable" ? "is-unscaled" : ""}`}>
+                    <li key={l.id} className={`${l.scaled.status === "scaled" ? "is-scaled" : ""} ${changed && l.scaled.status === "unscalable" ? "is-unscaled" : ""}`}>
                       <span className="mag-qty">{qty.replace(/\s+(g|kg|ml|l|cl)\b/i, "$1")}</span>
                       <span className="mag-name">
                         {name}
-                        {l.scaled.status === "unscalable" && <span className="unscaled" title="Couldn't read this amount reliably, so it's shown as originally written">not scaled</span>}
+                        {changed && l.scaled.status === "unscalable" && <span className="unscaled" title="Couldn't read this amount reliably, so it's shown as originally written">not scaled</span>}
                       </span>
                     </li>
                   );
                 })}
               </ul>
             )}
-            {unscalable > 0 && <p className="mag-small mag-pad">Highlighted amounts couldn't be scaled reliably.</p>}
+            {unscalable > 0 && <p className="mag-small mag-pad">Highlighted amounts don't scale exactly. Adjust them to taste.</p>}
           </section>
 
           {(r.tags.length > 0 || r.suggestedTags.length > 0 || hasNutrition) && (
@@ -255,13 +301,23 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
               <p>Thinking up some healthier swaps<span className="dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span></p>
             )}
           </section>}
+          {!view.on && onUpdate && <MyNotes value={r.myNotes ?? ""} onSave={(t) => onUpdate({ myNotes: t.trim() || null })} />}
         </aside>
 
         {/* ---------- Right column: photo, title panel, method ---------- */}
         <section className="mag-main">
           <h2 className="mag-head mag-head-main">Recipe</h2>
-          <div className="mag-photo">
+          <div className={`mag-photo ${r.imageUrl ? "" : "no-photo"}`}>
             <RecipeImage recipe={r} variant="hero" />
+            {!r.imageUrl && onSetPhoto && !view.on && (
+              <label className="btn btn-outline btn-sm add-photo">
+                <Icon name="camera" size={15} /> Add a photo
+                <input type="file" accept="image/*" hidden onChange={async (e) => {
+                  const f = (e.target as HTMLInputElement).files?.[0];
+                  if (f) onSetPhoto(await resizeImage(f));
+                }} />
+              </label>
+            )}
           </div>
           <div className="mag-reel">
             <ReelLink url={r.sourceUrl} onSetLink={onSetLink} />
@@ -269,6 +325,20 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
           <div className="mag-panel">
             {categories.length > 0 && <p className="mag-cats">{categories.join(" · ")}</p>}
             <h1 className="mag-title">{r.name || "Untitled recipe"}</h1>
+            {(!view.on || (r.cookedCount ?? 0) > 0 || (r.collections ?? []).length > 0) && (
+              <div className="mag-meta">
+                <span className="cooked">
+                  {(r.cookedCount ?? 0) > 0
+                    ? `Made ${r.cookedCount} ${r.cookedCount === 1 ? "time" : "times"}${r.lastCookedAt ? ` · last ${new Date(r.lastCookedAt).toLocaleDateString([], { day: "numeric", month: "short" })}` : ""}`
+                    : "Not made yet"}
+                </span>
+                <Stars value={r.rating ?? null} onChange={!view.on && onUpdate ? (v) => onUpdate({ rating: v }) : undefined} size={16} />
+                {!view.on && onUpdate && (
+                  <button className="link-btn" onClick={() => onUpdate({ cookedCount: (r.cookedCount ?? 0) + 1, lastCookedAt: new Date().toISOString() })}>I made this</button>
+                )}
+              </div>
+            )}
+            <Collections value={r.collections ?? []} all={allCollections} onChange={!view.on && onUpdate ? (c) => onUpdate({ collections: c }) : undefined} />
             {r.steps.length === 0 ? (
               <p className="mag-steps mag-step-text">No steps yet.</p>
             ) : (
@@ -309,6 +379,66 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
           onDelete();
         }}
       />
+      {cooking && (
+        <CookMode
+          recipe={r}
+          lines={lines.map((l) => l.shown)}
+          servingsLabel={servingsLabel}
+          onClose={() => setCooking(false)}
+          onCooked={!view.on && onUpdate ? (rating) => onUpdate({ cookedCount: (r.cookedCount ?? 0) + 1, lastCookedAt: new Date().toISOString(), ...(rating ? { rating } : {}) }) : undefined}
+        />
+      )}
     </article>
+  );
+}
+
+/** Your own notes on a recipe (kept off shared links). Saves when you click away. */
+function MyNotes({ value, onSave }: { value: string; onSave: (t: string) => void }) {
+  const [text, setText] = useState(value);
+  useEffect(() => setText(value), [value]);
+  return (
+    <section className="my-notes" aria-labelledby="my-notes-h">
+      <h2 id="my-notes-h" className="mag-head">My notes</h2>
+      <textarea
+        className="my-notes-input"
+        value={text}
+        placeholder="Used half the chilli? Doubled the garlic? Note it here."
+        rows={4}
+        onChange={(e) => setText((e.target as HTMLTextAreaElement).value)}
+        onBlur={() => text !== value && onSave(text)}
+        aria-label="My notes"
+      />
+    </section>
+  );
+}
+
+/** Your own groups for this recipe, e.g. "Weeknight". */
+function Collections({ value, all, onChange }: { value: string[]; all: string[]; onChange?: (c: string[]) => void }) {
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState("");
+  if (!onChange && value.length === 0) return null;
+  const add = () => {
+    const n = name.trim();
+    if (n && !value.includes(n)) onChange?.([...value, n]);
+    setName("");
+    setAdding(false);
+  };
+  return (
+    <div className="collections">
+      {value.map((c) => (
+        <span key={c} className="coll-chip">
+          <Icon name="bookmark" size={12} /> {c}
+          {onChange && <button aria-label={`Remove from ${c}`} onClick={() => onChange(value.filter((x) => x !== c))}><Icon name="x" size={11} /></button>}
+        </span>
+      ))}
+      {onChange && (adding ? (
+        <form className="coll-add" onSubmit={(e) => { e.preventDefault(); add(); }}>
+          <input autoFocus list="coll-list" value={name} onChange={(e) => setName((e.target as HTMLInputElement).value)} onBlur={add} placeholder="e.g. Weeknight" aria-label="Collection name" maxLength={40} />
+          <datalist id="coll-list">{all.filter((c) => !value.includes(c)).map((c) => <option key={c} value={c} />)}</datalist>
+        </form>
+      ) : (
+        <button className="coll-chip add" onClick={() => setAdding(true)}><Icon name="plus" size={12} /> {value.length ? "Collection" : "Add to a collection"}</button>
+      ))}
+    </div>
   );
 }

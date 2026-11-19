@@ -43,6 +43,14 @@ export type Recipe = {
   nutrition: Nutrition | null;
   /** Suggestions for a healthier version (shown in the notes card; the recipe itself is never changed). */
   healthTips?: string[] | null;
+  /** Your own notes ("used half the chilli"). Not shown on shared links. */
+  myNotes?: string | null;
+  /** Your own groups, e.g. "Weeknight", "Party". */
+  collections?: string[];
+  /** How many times you've made it, when you last did, and how it went (1–5). */
+  cookedCount?: number;
+  lastCookedAt?: string | null;
+  rating?: number | null;
   /** The raw caption text we found, kept for reference. */
   originalCaption: string | null;
   /** What was said and shown in the video (used when the recipe wasn't in the caption). */

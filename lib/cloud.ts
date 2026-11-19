@@ -1,3 +1,4 @@
+import { BUILT_IN_SUPABASE } from "./cloud-config";
 // A tiny Supabase client (auth by email + the "recipes" table), written with
 // plain fetch so Crumb stays small. Your project URL and publishable key are
 // public by design; only you can read your recipes because of the table's
@@ -24,7 +25,9 @@ const write = (k: string, v: unknown) => {
   } catch {}
 };
 
-export const getConfig = () => read<CloudConfig>(CONFIG);
+export const getConfig = (): CloudConfig | null =>
+  read<CloudConfig>(CONFIG) ?? (BUILT_IN_SUPABASE.url && BUILT_IN_SUPABASE.key ? BUILT_IN_SUPABASE : null);
+export const isBuiltInConfig = () => !read<CloudConfig>(CONFIG) && Boolean(BUILT_IN_SUPABASE.url && BUILT_IN_SUPABASE.key);
 export const getSession = () => read<Session>(SESSION);
 export const setSession = (s: Session | null) => write(SESSION, s);
 
@@ -273,4 +276,21 @@ export async function fetchShared(code: { url: string; key: string; token: strin
   if (!res.ok) throw new CloudError(await errorText(res), res.status);
   const j = await res.json();
   return j && Array.isArray(j.recipes) ? j : null;
+}
+
+// ---------- Your Gemini key on all your devices (optional) ----------
+// Stored in your own Supabase "user_settings" table; only you can read it.
+export async function getRemoteKey(): Promise<string | null> {
+  const res = await rest("user_settings?select=gemini_key&limit=1");
+  const rows = (await res.json()) as { gemini_key: string | null }[];
+  return rows[0]?.gemini_key || null;
+}
+export async function setRemoteKey(key: string | null) {
+  const s = getSession();
+  if (!s) return;
+  await rest("user_settings?on_conflict=user_id", {
+    method: "POST",
+    headers: { prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify({ user_id: s.user_id, gemini_key: key, updated_at: new Date().toISOString() }),
+  });
 }

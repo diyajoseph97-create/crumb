@@ -224,8 +224,8 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
 
             {!fillRecipe && (
               <div className="seg" role="tablist" aria-label="Add from">
-                <button type="button" role="tab" aria-selected={mode === "link"} className={mode === "link" ? "on" : ""} onClick={() => setMode("link")}><Icon name="link" size={16} /> From link</button>
-                <button type="button" role="tab" aria-selected={mode === "shots"} className={mode === "shots" ? "on" : ""} onClick={() => setMode("shots")}><Icon name="image" size={16} /> From screenshots</button>
+                <button type="button" role="tab" aria-selected={mode === "link"} className={mode === "link" ? "on" : ""} onClick={() => setMode("link")}>From link</button>
+                <button type="button" role="tab" aria-selected={mode === "shots"} className={mode === "shots" ? "on" : ""} onClick={() => setMode("shots")}>From screenshots</button>
               </div>
             )}
 
@@ -248,12 +248,11 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
 
             {!fillRecipe && mode === "link" && (
               <div className="add-step">
-                <span className="add-step-icon" aria-hidden="true"><Icon name="link" size={18} /></span>
                 <label className="add-step-body link-field">
                   <span className="add-step-title">Paste the link</span>
                   <span className="add-step-hint">From Instagram or YouTube. That's usually all you need: crumbs reads the caption or the video.</span>
                   <span className={`link-input ${url && !code ? "bad" : ""}`}>
-                    <input type="url" inputMode="url" value={url} onChange={(e) => setUrl(e.target.value.trim())} placeholder="https://www.instagram.com/reel/…" aria-label="Recipe link" />
+                    <input type="url" inputMode="url" value={url} onChange={(e) => { const v = e.target.value; const m = v.match(IG_LINK) || v.match(/https?:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/\S+/i); setUrl((m ? m[0] : v).trim()); }} placeholder="https://www.instagram.com/reel/…" aria-label="Recipe link" />
                     {code && <Icon name="check" size={16} className="link-ok" />}
                   </span>
                   {url && !code && <span className="hint bad">That doesn't look like an Instagram Reel or YouTube link.</span>}
@@ -263,7 +262,6 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
 
             {(fillRecipe || mode === "shots") && !(fillRecipe && ytUrl) && (
               <div className="add-step">
-                <span className="add-step-icon" aria-hidden="true"><Icon name="image" size={18} /></span>
                 <div className="add-step-body">
                   <span className="add-step-title">{fillRecipe ? "Add the video or screenshots" : "Add screenshots or a recording"}</span>
                   <span className="add-step-hint">{fillRecipe ? "A recording or screenshots of the recipe." : "Screenshots of the recipe, or a screen recording of the Reel."}</span>
@@ -301,10 +299,10 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
               </div>
             )}
 
+            {fillRecipe && (
             <div className="add-step">
-              <span className="add-step-icon" aria-hidden="true"><Icon name="list" size={18} /></span>
               <div className="add-step-body">
-                <span className="add-step-title">{mode === "shots" && !fillRecipe ? "Add the caption" : "Paste the caption"} <span className="add-opt">optional</span></span>
+                <span className="add-step-title">Paste the caption <span className="add-opt">optional</span></span>
                 <span className="add-step-hint">{ytUrl ? "The video's description, if it lists the amounts." : "Most creators put the ingredient amounts here."}</span>
                 <textarea
                   className="smart-input"
@@ -317,6 +315,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
                 />
               </div>
             </div>
+            )}
             <input ref={fileRef} type="file" accept="image/*,video/*" multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
 
             {!geminiKey && (files.length > 0 || caption.trim().length > 0) && (

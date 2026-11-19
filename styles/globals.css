@@ -756,3 +756,5 @@ b, strong { font-weight: 500; } /* only 400 and 500 are loaded; no fake bold */
 .cart-btn.on:hover { background: var(--soft); }
 .fav-chip { display: inline-flex; align-items: center; gap: 6px; }
 .fav-chip .icon { stroke-width: 2; }
+/* Add window without step icons */
+.add-step { grid-template-columns: minmax(0, 1fr); gap: 0; }

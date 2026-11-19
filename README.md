@@ -59,7 +59,7 @@ create index if not exists recipes_sync_idx on public.recipes (user_id, synced_a
 
 5. Run `supabase/update-2.sql` too (lets your Gemini key follow you to other devices and keeps My notes out of shared links).
 
-Crumb asks for a 6-digit code: add `{{ .Token }}` to the **Magic Link** and **Confirm signup** email templates so the email includes it.
+Sign-in is by email link: open the email on the same device and tap Sign in. (Supabase only lets you edit the email to add a 6-digit code after setting up custom SMTP; Crumb accepts a code if one is there.)
 
 To skip pasting the Project URL on every device, put the URL and **publishable** key in `lib/cloud-config.ts` (both are safe to be public; never the secret key).
 

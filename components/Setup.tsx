@@ -270,14 +270,14 @@ function SyncSection() {
           <form className="col gap-sm" onSubmit={(e) => { e.preventDefault(); if (!/.+@.+\..+/.test(email)) return setMsg({ text: "Type your email address first.", bad: true }); run(async () => { await sendSignInEmail(email); setSent(true); }); }}>
             <p className="muted small">Sign in with your email. Use the same email on each device.</p>
             <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" aria-label="Email" autoComplete="email" />
-            <button className="btn btn-primary btn-sm" style={{ alignSelf: "flex-start" }} disabled={busy}>{busy ? "Sending…" : "Email me a sign-in code"}</button>
+            <button className="btn btn-primary btn-sm" style={{ alignSelf: "flex-start" }} disabled={busy}>{busy ? "Sending…" : "Email me a sign-in link"}</button>
           </form>
         ) : (
           <form className="col gap-sm" onSubmit={(e) => { e.preventDefault(); if (code.length < 6) return setMsg({ text: "Type the 6-digit code from the email.", bad: true }); run(async () => { await verifyCode(email, code); refresh(); syncNow(); }); }}>
-            <p className="muted small">We've emailed <strong>{email}</strong>. Type the 6-digit code from it here (or tap the link in the email, on this device).</p>
-            <input className="input" inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="Code from the email" aria-label="Sign-in code" autoComplete="one-time-code" />
+            <p className="muted small">We've emailed <strong>{email}</strong>. Open that email <strong>on this device</strong> and tap <strong>Sign in</strong>. Crumb opens already signed in. (If the email shows a code instead, type it below.)</p>
+            <input className="input" inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="Code (only if the email has one)" aria-label="Sign-in code" autoComplete="one-time-code" />
             <div className="row gap-xs wrap">
-              <button className="btn btn-primary btn-sm" disabled={busy}>{busy ? "Checking…" : "Sign in"}</button>
+              <button className="btn btn-primary btn-sm" disabled={busy}>{busy ? "Checking…" : "Sign in with code"}</button>
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setSent(false); setCode(""); }}>Use a different email</button>
             </div>
           </form>

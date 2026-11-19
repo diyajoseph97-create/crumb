@@ -210,14 +210,22 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
   const recipesRef = useRef(recipes);
   recipesRef.current = recipes;
 
+  // Jobs being read right now, so the same one never runs twice at once.
+  const running = useRef(new Set<string>());
   const runJob = useCallback(
     async (job: ImportJob) => {
-      if (!geminiKey) return;
+      if (!geminiKey || running.current.has(job.id)) return;
+      running.current.add(job.id);
       setJobs((js) => js.map((j) => (j.id === job.id ? { ...j, status: "adding", error: undefined } : j)));
       saveJob({ ...job, status: "adding", error: undefined });
       const existing = job.fillId ? recipesRef.current.find((r) => r.id === job.fillId) ?? null : null;
       try {
-        const recipe = await runImport(job, { apiKey: geminiKey, store, existing });
+        // Never leave a card spinning: give up after 4 minutes (phones can pause crumbs mid-read).
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const tooLong = new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error("This took too long, maybe the connection dropped. Tap Try again.")), 240000);
+        });
+        const recipe = await Promise.race([runImport(job, { apiKey: geminiKey, store, existing, onStage: (stage) => setJobs((js) => js.map((j) => (j.id === job.id ? { ...j, stage } : j))) }), tooLong]).finally(() => clearTimeout(timer));
         setJobs((js) => js.filter((j) => j.id !== job.id));
         forgetJob(job.id);
         upsert(recipe);
@@ -228,6 +236,8 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
         setJobs((js) => js.map((j) => (j.id === job.id ? { ...j, status: "failed", error: message } : j)));
         saveJob({ ...job, status: "failed", error: message });
         toast(existing ? "Couldn't fill in that recipe" : "Couldn't add a recipe. See the card for details.");
+      } finally {
+        running.current.delete(job.id);
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps

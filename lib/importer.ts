@@ -21,6 +21,8 @@ export type ImportJob = ImportInput & {
   id: string;
   status: "adding" | "failed";
   error?: string;
+  /** What it's doing right now, shown on the card. */
+  stage?: string;
   /** A picture to show while it's being added (YouTube thumbnail), if we have one. */
   thumb: string | null;
   startedAt: number;
@@ -39,15 +41,18 @@ export function newJob(input: ImportInput): ImportJob {
 
 export class NotARecipe extends Error {}
 
-export async function runImport(job: ImportInput, deps: { apiKey: string; store: Store; existing: Recipe | null }): Promise<Recipe> {
-  const { apiKey, store, existing } = deps;
+export async function runImport(job: ImportInput, deps: { apiKey: string; store: Store; existing: Recipe | null; onStage?: (s: string) => void }): Promise<Recipe> {
+  const { apiKey, store, existing, onStage } = deps;
   const ytUrl = job.code && isYouTube(job.code) ? canonicalInstagramUrl(job.code) : existing && isYouTube(existing.sourceShortcode) ? existing.sourceUrl : null;
 
   // Instagram with no video: read the Reel's public caption and cover first.
   const igCode = job.code && !isYouTube(job.code) ? job.code : existing && existing.sourceShortcode && !isYouTube(existing.sourceShortcode) ? existing.sourceShortcode : null;
   const hasVideo = job.files.some((f) => f.type.startsWith("video/"));
   let preview: ReelPreview | null = null;
-  if (igCode && !hasVideo) preview = await fetchReelPreview(igCode);
+  if (igCode && !hasVideo) {
+    onStage?.("Reading the Instagram caption");
+    preview = await fetchReelPreview(igCode);
+  }
   const pastedCaption = job.caption.trim() || existing?.originalCaption || "";
   const caption = pastedCaption || preview?.caption || "";
   const files = [...job.files];
@@ -62,7 +67,9 @@ export async function runImport(job: ImportInput, deps: { apiKey: string; store:
     text: caption,
     existing: existing ?? undefined,
     youtubeUrl: ytUrl,
+    onStage: (st) => onStage?.(st === "busy" ? "Google is busy, trying again" : st === "upload" && hasVideo ? "Sending the video" : "Reading the recipe"),
   });
+  onStage?.("Saving");
   if (!result.isRecipe && !existing) {
     // Only the Reel's caption to go on, and it wasn't a recipe: save it to finish with the video.
     if (igCode && !job.files.length && !job.caption.trim()) return saveLater(job, store, preview);

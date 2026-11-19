@@ -68,7 +68,7 @@ export function JobCard({ job, onRetry, onDismiss }: { job: ImportJob; onRetry: 
       </div>
       <div className="card-body">
         <h3 className="card-title px">{failed ? "Couldn't add this one" : <>Fetching the good stuff<span className="dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span></>}</h3>
-        <p className="card-sub">{failed ? job.error : `${from} · you can keep browsing`}</p>
+        <p className="card-sub">{failed ? job.error : `${job.stage ? `${job.stage}…` : from} · you can keep browsing`}</p>
         {failed && (
           <div className="row gap-xs wrap">
             <button className="btn btn-primary btn-sm" onClick={onRetry}>Try again</button>

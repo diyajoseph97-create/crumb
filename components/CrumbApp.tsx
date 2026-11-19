@@ -9,6 +9,7 @@ import { RecipeEditor } from "./RecipeEditor";
 import { AddRecipeModal, IG_LINK } from "./AddRecipeModal";
 import { takeShared } from "@/lib/share";
 import { fetchReelPreview } from "@/lib/reel";
+import { nutritionKey, recalculate } from "@/lib/nutrition";
 import { compactPhoto } from "@/lib/image";
 import { suggestHealthier } from "@/lib/gemini";
 import { canShare, makeShareLink, sendLink } from "@/lib/sharing";
@@ -327,6 +328,31 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, recipes.length]);
+
+  // Nutrition from the ingredients: worked out again whenever a recipe's ingredients or
+  // servings change (new, edited, filled in, synced), one recipe at a time, when idle.
+  const calcBusy = useRef(false);
+  useEffect(() => {
+    if (viewOnly || loading || calcBusy.current) return;
+    const due = () => recipesRef.current.filter((r) => r.ingredients.length > 0 && r.nutritionSource !== "manual" && r.nutritionFor !== nutritionKey(r));
+    if (!due().length) return;
+    calcBusy.current = true;
+    const idle = (fn: () => void) => ("requestIdleCallback" in window ? (window as any).requestIdleCallback(fn, { timeout: 2000 }) : setTimeout(fn, 200));
+    (async () => {
+      try {
+        for (let todo = due(); todo.length; todo = due()) {
+          const r = todo[0];
+          await new Promise<void>((res) => idle(() => res()));
+          const patch = await recalculate(r).catch(() => null);
+          if (!patch) break; // food table unavailable (offline): try again next time
+          upsert(await store.update(r.id, patch));
+        }
+      } finally {
+        calcBusy.current = false;
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, recipes]);
 
   // Instagram Reels saved while the caption couldn't be read (offline, or the phone paused
   // crumbs): try again when crumbs is open and visible. Once per Reel per visit.

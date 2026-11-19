@@ -154,7 +154,13 @@ export function RecipeEditor({ initial, title, onCancel, onSave, uploadImage, ap
           .filter((r) => r.original.trim())
           .map(({ autoCanonical, ...r }) => ({ ...r, original: r.original.trim(), canonical: normaliseName(r.canonical) || canonicalise(r.original) })),
         steps: steps.map((s) => s.trim()).filter(Boolean),
-        nutrition: Object.values(n).some((v) => v != null) ? n : null,
+        // Numbers you changed here are yours and are never recalculated. Clear them all to let crumbs work them out again.
+        ...(() => {
+          const typed = Object.values(n).some((v) => v != null) ? n : null;
+          const changed = JSON.stringify(typed) !== JSON.stringify(initial.nutrition ?? null);
+          if (!typed) return { nutrition: null, nutritionSource: null, nutritionFor: null };
+          return changed ? { nutrition: typed, nutritionSource: "manual" as const } : { nutrition: typed };
+        })(),
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't save. Try again.");
@@ -336,6 +342,11 @@ export function RecipeEditor({ initial, title, onCancel, onSave, uploadImage, ap
 
         <section className="ed-card span-2">
           <h2 className="ed-title">Nutrition per serving <span className="muted small">(optional)</span></h2>
+          <p className="muted small">
+            {initial.nutritionSource === "manual"
+              ? "You set these numbers. Clear them all and save to let crumbs work them out from the ingredients."
+              : "crumbs works these out from the ingredients when you save. Change a number to set your own."}
+          </p>
           <div className="field-row five">
             {(["calories", "protein", "carbs", "fat", "fibre"] as const).map((k) => (
               <label key={k} className="field">

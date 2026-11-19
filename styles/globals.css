@@ -759,3 +759,17 @@ b, strong { font-weight: 500; } /* only 400 and 500 are loaded; no fake bold */
 /* Add window without step icons */
 .add-step { grid-template-columns: minmax(0, 1fr); gap: 0; }
 .settings-version { margin: 24px 0 0; font-size: var(--small); color: var(--ink-3); text-align: center; }
+/* Nutrition: how it's counted */
+.nutri-how { display: inline-block; margin-top: 6px; font-size: var(--small); color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; }
+.nutri-how:hover { color: var(--ink); }
+.nutri-sheet .sheet-body { display: grid; gap: 16px; }
+.nutri-sheet p { margin: 0; }
+.nutri-total { font-size: var(--body); padding: 12px 0; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--ink); }
+.nutri-table { width: 100%; border-collapse: collapse; font-size: var(--small); }
+.nutri-table th { text-align: left; font-size: var(--caps); letter-spacing: var(--caps-ls); text-transform: uppercase; font-weight: 500; color: var(--ink-2); padding: 0 8px 8px 0; border-bottom: 1px solid var(--rule); }
+.nutri-table td { padding: 10px 8px 10px 0; border-bottom: 1px solid var(--hair); vertical-align: top; }
+.nutri-table .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.nutri-skip ul { margin: 6px 0 0; padding-left: 18px; font-size: var(--small); }
+.nutri-skip .label { margin: 0 0 4px; }
+.nutri-src { border-top: 1px solid var(--hair); padding-top: 12px; }
+@media (max-width: 640px) { .nutri-table th:nth-child(2), .nutri-table td:nth-child(2) { display: none; } }

@@ -19,7 +19,7 @@ function save(item, key = "latest") {
 }
 
 // Offline copy of the app. The build stamps a new version on every deploy.
-const CACHE = "crumb-16820e5343";
+const CACHE = "crumb-02b74ad764";
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) =>
@@ -60,6 +60,18 @@ async function page(request) {
   return saved || fresh;
 }
 
+// The food table: the latest from the network, the saved copy when offline.
+async function data(request) {
+  const cache = await caches.open(CACHE);
+  try {
+    const res = await fetch(request);
+    if (res.ok) cache.put(request, res.clone());
+    return res;
+  } catch {
+    return (await cache.match(request)) || Response.error();
+  }
+}
+
 // Fonts and icons never change name, so the saved copy is always right.
 async function asset(request) {
   const cache = await caches.open(CACHE);
@@ -76,6 +88,7 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method === "GET" && inScope) {
     if (event.request.mode === "navigate") return event.respondWith(page(event.request));
     if (/\/(fonts|icons)\//.test(url.pathname)) return event.respondWith(asset(event.request));
+    if (url.pathname.endsWith("/foods.json")) return event.respondWith(data(event.request));
     return;
   }
   if (event.request.method !== "POST" || !url.pathname.endsWith("/share-target")) return;

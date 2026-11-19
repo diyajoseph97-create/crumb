@@ -4,6 +4,7 @@
 import { isYouTube } from "@/lib/recipe-utils";
 import { resizeImage } from "@/lib/image";
 import { convertLine, nativeUnits } from "@/lib/units";
+import { calculate, loadFoods, type Calculation } from "@/lib/nutrition";
 import { addToList, getList, isOnList, onListChange, removeFromList } from "@/lib/shopping";
 import { CookMode, Stars } from "./CookMode";
 import type { ImportJob } from "@/lib/importer";
@@ -111,6 +112,7 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
   });
   const servingsLabel = r.servings ? `For ${servings} ${servings === 1 ? "person" : "people"}` : "Servings not given";
   const [picking, setPicking] = useState(false);
+  const [showNutri, setShowNutri] = useState(false);
   /** Add the chosen ingredients (the ones you don't already have) to the shopping list. */
   function addPicked(keep: boolean[]) {
     const chosen = lines.filter((_, i) => keep[i]);
@@ -216,11 +218,18 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
             {hasNutrition && (
               <div className="facts-row">
                 <div>
-                  <dt className="label"><PixelIcon name="bowl" />Per serving, roughly</dt>
+                  <dt className="label"><PixelIcon name="bowl" />Per serving{r.nutritionSource === "ai" ? ", AI estimate" : r.nutritionSource === "manual" ? ", set by you" : ""}</dt>
                   <dd className="facts-small">
                     {([[n!.calories, " kcal"], [n!.protein, " g protein"], [n!.carbs, " g carbs"], [n!.fat, " g fat"], [n!.fibre, " g fibre"]] as const)
                       .filter(([v]) => v != null).map(([v, u]) => `${v}${u}`).join(" · ")}
                   </dd>
+                  {r.ingredients.length > 0 && (
+                    <button className="nutri-how" onClick={() => setShowNutri(true)}>
+                      {r.nutritionSource === "calculated" && r.nutritionCount
+                        ? `Worked out from ${r.nutritionCount.counted} of ${r.nutritionCount.of} ingredients · How?`
+                        : r.nutritionSource === "ai" ? "Not enough amounts to work it out · Why?" : "How is this counted?"}
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -339,6 +348,9 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
         </div>
       </div>
 
+      <Modal open={showNutri} onClose={() => setShowNutri(false)} label="How the nutrition is worked out" variant="sheet">
+        {showNutri && <NutritionWorking recipe={r} onClose={() => setShowNutri(false)} />}
+      </Modal>
       <Modal open={picking} onClose={() => setPicking(false)} label="Add to shopping list" variant="sheet">
         {picking && <ShopPicker recipeId={r.id} lines={lines.map((l) => l.shown)} onList={onList} onDone={(keep) => { if (keep) addPicked(keep); else removeFromList(r.id); setPicking(false); }} onClose={() => setPicking(false)} />}
       </Modal>
@@ -421,6 +433,61 @@ function ShopPicker({ recipeId, lines, onList, onDone, onClose }: { recipeId: st
         <button className="btn btn-primary" onClick={() => onDone(keep)} disabled={n === 0 && !onList}>
           <Icon name="cart" size={16} /> {n === 0 ? "Remove from list" : onList ? `Update list (${n})` : `Add ${n} ${n === 1 ? "item" : "items"}`}
         </button>
+      </div>
+    </div>
+  );
+}
+
+/** The working behind the nutrition: each ingredient in grams and calories, and what couldn't be counted. */
+function NutritionWorking({ recipe: r, onClose }: { recipe: Recipe; onClose: () => void }) {
+  const [calc, setCalc] = useState<Calculation | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    loadFoods().then((foods) => setCalc(calculate(r.ingredients.map((i) => i.original), foods)), () => setFailed(true));
+  }, [r]);
+  const per = r.servings || 1;
+  const total = calc ? calc.total.map((v) => v / per) : null;
+  return (
+    <div className="shop nutri-sheet">
+      <div className="sheet-head">
+        <span className="sheet-grip" aria-hidden="true" />
+        <h2 className="h-display h-sm">How it's counted</h2>
+        <button className="icon-btn" onClick={onClose} aria-label="Close"><Icon name="x" /></button>
+      </div>
+      <div className="sheet-body">
+        {failed && <p className="muted">Couldn't load the food values. Check your connection and try again.</p>}
+        {!calc && !failed && <p className="muted">Working it out…</p>}
+        {calc && total && (
+          <>
+            <p className="small">
+              Each ingredient's amount is turned into grams and multiplied by measured food values
+              {r.servings ? `, then divided by ${r.servings} servings.` : ". This recipe has no serving size, so these are for the whole dish."}
+              {r.nutritionSource === "manual" && " You've set your own numbers for this recipe, so those are shown on the page instead."}
+              {r.nutritionSource === "ai" && " Too few amounts could be counted, so the page shows Gemini's estimate instead."}
+            </p>
+            <p className="nutri-total">
+              <strong>{Math.round(total[0])} kcal</strong> · {Math.round(total[1])} g protein · {Math.round(total[3])} g carbs · {Math.round(total[2])} g fat · {Math.round(total[4])} g fibre
+              <span className="muted small"> {r.servings ? "per serving" : "whole dish"}</span>
+            </p>
+            <table className="nutri-table">
+              <thead><tr><th>Ingredient</th><th>Counted as</th><th className="num">Grams</th><th className="num">kcal</th></tr></thead>
+              <tbody>
+                {calc.counted.map((c, i) => (
+                  <tr key={i}><td>{c.line}</td><td className="muted">{c.food.n}</td><td className="num">{Math.round(c.grams)}</td><td className="num">{Math.round(c.kcal)}</td></tr>
+                ))}
+              </tbody>
+            </table>
+            {calc.skipped.length > 0 && (
+              <div className="nutri-skip">
+                <h3 className="label">Not counted</h3>
+                <p className="muted small">No amount given, or not in the food tables. Add an amount in Edit to include it.</p>
+                <ul>{calc.skipped.map((l, i) => <li key={i}>{l}</li>)}</ul>
+              </div>
+            )}
+            {calc.ignored.length > 0 && <p className="muted small">Too small to matter: {calc.ignored.join(", ")}.</p>}
+            <p className="muted small nutri-src">Food values: Indian Food Composition Tables 2017 (National Institute of Nutrition, Hyderabad) and USDA Standard Reference. Raw ingredients are counted, so oil left in the pan is included.</p>
+          </>
+        )}
       </div>
     </div>
   );

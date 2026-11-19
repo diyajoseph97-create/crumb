@@ -41,6 +41,12 @@ export type Recipe = {
   /** AI-suggested tags not yet confirmed by you (shown with a "suggested" style). */
   suggestedTags: string[];
   nutrition: Nutrition | null;
+  /** Where the nutrition came from: worked out from the ingredients, an AI estimate, or typed in by you. */
+  nutritionSource?: "calculated" | "ai" | "manual" | null;
+  /** Which ingredients/servings the nutrition was worked out for (so it's redone when they change). */
+  nutritionFor?: string | null;
+  /** How many ingredient lines could be counted, of the ones that matter. */
+  nutritionCount?: { counted: number; of: number } | null;
   /** Suggestions for a healthier version (shown in the notes card; the recipe itself is never changed). */
   healthTips?: string[] | null;
   /** Who made the original: Instagram handle or YouTube channel, e.g. "@kitchenstories". */

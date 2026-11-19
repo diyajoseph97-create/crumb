@@ -53,6 +53,8 @@ writeFileSync(resolve(root, "docs/index.html"), html);
 writeFileSync(resolve(root, "docs/.nojekyll"), "");
 cpSync(resolve(root, "fonts"), resolve(root, "docs/fonts"), { recursive: true });
 cpSync(resolve(root, "public"), resolve(root, "docs"), { recursive: true });
+// Food values for working out nutrition (built by scripts/build_foods.py).
+cpSync(resolve(root, "data/foods.json"), resolve(root, "docs/foods.json"));
 // Stamp the service worker with this build, so each deploy refreshes the offline copy.
 const stamp = createHash("sha1").update(html).digest("hex").slice(0, 10);
 writeFileSync(resolve(root, "docs/sw.js"), readFileSync(resolve(root, "public/sw.js"), "utf8").replace("__BUILD__", stamp));

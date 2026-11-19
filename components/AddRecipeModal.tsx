@@ -134,7 +134,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
     if (existing) return setPhase({ kind: "done", result: { status: "duplicate", recipe: existing } });
     try {
       if (!isYouTube(code)) {
-        const preview = await fetchReelPreview(code);
+        const preview = await fetchReelPreview(code).catch(() => null);
         const recipe = await saveLater({ files: [], caption, code, fillId: null }, store, preview);
         onSaved(recipe);
         onClose();

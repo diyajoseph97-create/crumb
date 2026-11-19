@@ -8,12 +8,13 @@ import { RecipeDetail } from "./RecipeDetail";
 import { RecipeEditor } from "./RecipeEditor";
 import { AddRecipeModal, IG_LINK } from "./AddRecipeModal";
 import { takeShared } from "@/lib/share";
+import { fetchReelPreview } from "@/lib/reel";
 import { compactPhoto } from "@/lib/image";
 import { suggestHealthier } from "@/lib/gemini";
 import { canShare, makeShareLink, sendLink } from "@/lib/sharing";
 import { ShoppingList, useShoppingCount } from "./ShoppingList";
 import { onRemoteChanges, onSyncStatus, getSyncStatus, type SyncStatus } from "@/lib/sync";
-import { forgetJob, newJob, runImport, saveJob, savedJobs, type ImportInput, type ImportJob } from "@/lib/importer";
+import { captionNotRead, forgetJob, newJob, RETRY_NOTE, runImport, saveJob, savedJobs, type ImportInput, type ImportJob } from "@/lib/importer";
 import { isSavedForLater, isYouTube, youtubeCreator, youtubeVideoId } from "@/lib/recipe-utils";
 import { cleanPhoto } from "@/lib/trim";
 import { Doodle, Icon, Modal, ViewOnlyContext } from "./ui";
@@ -229,7 +230,8 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
         setJobs((js) => js.filter((j) => j.id !== job.id));
         forgetJob(job.id);
         upsert(recipe);
-        if (isSavedForLater(recipe)) toast(recipe.originalCaption ? "Saved for later. The caption didn't have the recipe, so add the video when you can." : "Saved for later. Add the video when you can.", { label: "Add the video", run: () => setAdd({ open: true, fill: recipe, shared: null }) });
+        if (isSavedForLater(recipe) && recipe.importNotes?.startsWith(RETRY_NOTE)) toast("Saved. crumbs couldn't read the caption yet and will try again when you're back.");
+        else if (isSavedForLater(recipe)) toast(recipe.originalCaption ? "Saved for later. The caption didn't have the recipe, so add the video when you can." : "Saved for later. Add the video when you can.", { label: "Add the video", run: () => setAdd({ open: true, fill: recipe, shared: null }) });
         else toast(existing ? `“${recipe.name}” is all filled in!` : "One more recipe safely tucked away!", { label: "View recipe", run: () => go(`recipe-${recipe.id}`) });
       } catch (e) {
         const message = e instanceof Error ? e.message : "Something went wrong.";
@@ -258,7 +260,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
   /** "Read it" / "Fill in": YouTube needs nothing more, so start right away; otherwise ask for the video. */
   const fillFrom = (r: Recipe) => {
     // YouTube, or an Instagram Reel whose caption hasn't been tried yet: read it now.
-    if (geminiKey && (isYouTube(r.sourceShortcode) || (r.sourceShortcode && !r.importNotes?.includes("“Add the video”")))) {
+    if (geminiKey && (isYouTube(r.sourceShortcode) || (r.sourceShortcode && (captionNotRead(r.importNotes) || !r.importNotes?.includes("“Add the video”"))))) {
       queue({ files: [], caption: "", code: null, fillId: r.id });
       toast(`Reading “${r.name}” in the background…`);
     } else setAdd({ open: true, fill: r, shared: null });
@@ -317,6 +319,26 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, recipes.length]);
+
+  // Instagram Reels saved while the caption couldn't be read (offline, or the phone paused
+  // crumbs): try again when crumbs is open and visible. Once per Reel per visit.
+  const retried = useRef(new Set<string>());
+  useEffect(() => {
+    if (viewOnly || loading || !geminiKey) return;
+    const retry = async () => {
+      if (document.visibilityState !== "visible") return;
+      const due = recipesRef.current.filter((r) => isSavedForLater(r) && r.sourceShortcode && captionNotRead(r.importNotes) && !retried.current.has(r.id));
+      for (const r of due) {
+        retried.current.add(r.id);
+        const ok = await fetchReelPreview(r.sourceShortcode!).then(() => true, () => false);
+        if (ok) queue({ files: [], caption: "", code: null, fillId: r.id });
+      }
+    };
+    retry();
+    document.addEventListener("visibilitychange", retry);
+    return () => document.removeEventListener("visibilitychange", retry);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, geminiKey, recipes.length]);
 
   // Carry on with recipes that were still being added when Crumb was last closed.
   const resumed = useRef(false);

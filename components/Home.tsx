@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Recipe } from "@/lib/types";
 import { activeFilterCount, allIngredients, applyFilters, EMPTY_FILTERS, type Filters } from "@/lib/filter";
 import { displayName } from "@/lib/synonyms";
+import { captionNotRead } from "@/lib/importer";
 import { isSavedForLater, isYouTube, totalMinutes } from "@/lib/recipe-utils";
 import { Dropdown, Icon, Modal, useViewOnly } from "./ui";
 import { FilterPanel } from "./FilterPanel";
@@ -88,7 +89,7 @@ function Inbox({ items, onFill, onOpen }: { items: Recipe[]; onFill: (r: Recipe)
                   <Icon name="external" size={16} />
                 </a>
                 <button className="btn btn-primary btn-sm" onClick={() => onFill(r)}>
-                  {isYouTube(r.sourceShortcode) || !r.importNotes?.includes("“Add the video”") ? "Read it" : "Add the video"}
+                  {isYouTube(r.sourceShortcode) || captionNotRead(r.importNotes) || !r.importNotes?.includes("“Add the video”") ? "Read it" : "Add the video"}
                 </button>
               </li>
             );

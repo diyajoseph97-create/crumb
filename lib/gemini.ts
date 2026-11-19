@@ -341,7 +341,8 @@ function cleanBox(b: unknown): DishBox | null {
 /** When filling in an existing recipe: never overwrite something we already had. */
 export function mergeIntoExisting(existing: Recipe, found: Partial<RecipeDraft>): Partial<RecipeDraft> {
   const patch: Partial<RecipeDraft> = {};
-  if (!existing.name.trim() || existing.name === "Recipe from Instagram" || existing.name === "Recipe from YouTube") patch.name = found.name || existing.name;
+  const placeholderName = !existing.name.trim() || existing.name === "Recipe from Instagram" || existing.name === "Recipe from YouTube" || (existing.ingredients.length === 0 && existing.steps.length === 0);
+  if (placeholderName) patch.name = found.name || existing.name;
   if (found.ingredients && found.ingredients.length >= existing.ingredients.length) patch.ingredients = found.ingredients;
   if (found.steps && found.steps.length >= existing.steps.length) patch.steps = found.steps;
   const timesMissing = existing.prepMinutes == null && existing.cookMinutes == null;

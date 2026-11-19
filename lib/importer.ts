@@ -5,7 +5,7 @@ import type { Store } from "./store";
 import { mergeIntoExisting, readRecipe } from "./gemini";
 import { captureFrame } from "./video-frame";
 import { cleanPhoto } from "./trim";
-import { dataUrlToFile, fetchReelPreview, type ReelPreview } from "./reel";
+import { dataUrlToFile, fetchReelPreview, PreviewUnavailable, type ReelPreview } from "./reel";
 import { canonicalInstagramUrl, emptyDraft, isYouTube, youtubeCreator, youtubeThumbnail, youtubeVideoId } from "./recipe-utils";
 
 export type ImportInput = {
@@ -51,7 +51,14 @@ export async function runImport(job: ImportInput, deps: { apiKey: string; store:
   let preview: ReelPreview | null = null;
   if (igCode && !hasVideo) {
     onStage?.("Reading the Instagram caption");
-    preview = await fetchReelPreview(igCode);
+    try {
+      preview = await fetchReelPreview(igCode);
+    } catch (e) {
+      // Couldn't read it right now. With nothing else to go on, keep the link and try again later.
+      if (!(e instanceof PreviewUnavailable) || job.files.length || job.caption.trim() || existing?.originalCaption) preview = null;
+      else if (existing) throw new Error(`${e.message} Try again in a moment.`);
+      else return saveLater(job, store, null, e.message);
+    }
   }
   const pastedCaption = job.caption.trim() || existing?.originalCaption || "";
   const caption = pastedCaption || preview?.caption || "";
@@ -124,10 +131,13 @@ export async function runImport(job: ImportInput, deps: { apiKey: string; store:
 }
 
 export const LATER_NOTE: string = "The recipe wasn't in the caption. Record or download the Reel, then tap “Add the video” to finish it.";
-const NO_PREVIEW_NOTE = "Saved the link. Record or download the Reel, then tap “Add the video” to finish it.";
+/** Saved because the caption couldn't be read right now: crumbs tries again by itself. */
+export const RETRY_NOTE = "Couldn't read the caption yet. crumbs will try again, or tap “Read it”.";
+/** Saved without its caption being read (including Reels saved before crumbs could read captions). */
+export const captionNotRead = (notes: string | null | undefined) => Boolean(notes && (notes.startsWith(RETRY_NOTE) || notes.startsWith("Saved the link.") || notes.startsWith("Instagram only shared the link")));
 
 /** Keep an Instagram link (with its caption, cover and creator, if we got them) to finish later. */
-export async function saveLater(job: ImportInput, store: Store, preview: ReelPreview | null): Promise<Recipe> {
+export async function saveLater(job: ImportInput, store: Store, preview: ReelPreview | null, why?: string): Promise<Recipe> {
   const code = preview?.code || job.code!;
   const firstLine = preview?.caption?.split("\n").map((l) => l.trim()).find((l) => l && !l.startsWith("#"));
   let imageUrl: string | null = null;
@@ -140,7 +150,7 @@ export async function saveLater(job: ImportInput, store: Store, preview: ReelPre
     sourceUrl: canonicalInstagramUrl(code),
     sourceShortcode: code,
     originalCaption: job.caption.trim() || preview?.caption || null,
-    importNotes: preview ? LATER_NOTE : NO_PREVIEW_NOTE,
+    importNotes: preview ? LATER_NOTE : `${RETRY_NOTE}${why ? ` (${why})` : ""}`,
   });
 }
 

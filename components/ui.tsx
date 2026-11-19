@@ -27,6 +27,8 @@ const PATHS: Record<string, React.ReactNode> = {
   download: <><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5" /><path d="M5 19h14" /></>,
   upload: <><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5" /><path d="M5 19h14" /></>,
   cart: <><path d="M3 4h2.5l2.2 10.5h10.6L20.5 7H6.6" /><circle cx="9.5" cy="19" r="1.4" /><circle cx="17" cy="19" r="1.4" /></>,
+  "cart-plus": <><path d="M2.5 4h2.6l2.3 11h11.1L21 6.5H6" /><circle cx="9.5" cy="19.5" r="1.4" /><circle cx="17" cy="19.5" r="1.4" /><path d="M13.3 8.3v4.4M11.1 10.5h4.4" /></>,
+  "cart-check": <><path d="M2.5 4h2.6l2.3 11h11.1L21 6.5H6" /><circle cx="9.5" cy="19.5" r="1.4" /><circle cx="17" cy="19.5" r="1.4" /><path d="m10.9 10.6 1.8 1.8 3.3-3.6" /></>,
   bookmark: <path d="M7 4h10v16l-5-4-5 4V4Z" />,
   list: <><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="4.5" cy="6" r="1" /><circle cx="4.5" cy="12" r="1" /><circle cx="4.5" cy="18" r="1" /></>,
   star: <path d="m12 4 2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 16.4l-4.8 2.5.9-5.4-3.9-3.8 5.4-.8L12 4Z" />,

@@ -748,3 +748,8 @@ b, strong { font-weight: 500; } /* only 400 and 500 are loaded; no fake bold */
 /* Picker: ticked = add it (no strike-through); unticked = already have it */
 .shop-pick .cook-ing.on, .shop-pick .cook-ing.on .shop-name { text-decoration: none !important; opacity: 1; color: var(--ink); }
 .shop-pick .cook-ing:not(.on) .shop-name { color: var(--ink-3); }
+/* Cart: plain icon, no outline */
+.cart-btn { border: 0; width: 44px; height: 44px; margin-right: -8px; }
+.cart-btn:hover { background: var(--soft); color: var(--ink); }
+.cart-btn.on { background: none; color: var(--ink); }
+.cart-btn.on:hover { background: var(--soft); }

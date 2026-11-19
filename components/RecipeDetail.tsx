@@ -272,8 +272,7 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
               <h2 id="ing-h" className="rp-h px">Ingredients:</h2>
               {lines.length > 0 && (
                 <button className={`icon-btn cart-btn ${onList ? "on" : ""}`} onClick={() => setPicking(true)} aria-label={onList ? "On your shopping list. Change or remove" : "Add to shopping list"} title={onList ? "On your shopping list" : "Add to shopping list"}>
-                  <Icon name="cart" size={20} />
-                  {onList && <span className="cart-tick" aria-hidden="true"><Icon name="check" size={10} /></span>}
+                  <Icon name={onList ? "cart-check" : "cart-plus"} size={24} />
                 </button>
               )}
             </div>

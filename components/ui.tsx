@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from "react";
-import { Mark } from "./Shapes";
 
 // ---------- Icons (simple line icons, 24px grid) ----------
 const PATHS: Record<string, React.ReactNode> = {
@@ -54,10 +53,15 @@ export function Icon({ name, size = 20, filled = false, className = "" }: { name
   );
 }
 
-// ---------- Decorative mark (empty states, welcome) ----------
-const DOODLE_TONE: Record<string, number> = { pot: 0, bowl: 2, egg: 1, crumbs: 3, sparkle: 2, chilli: 4, leaf: 3, swirl: 1, cup: 5 };
-export function Doodle({ name, className = "" }: { name: string; className?: string; strokeWidth?: number }) {
-  return <Mark tone={DOODLE_TONE[name] ?? 0} className={`doodle ${className}`} />;
+// ---------- The crumbs mark: three pixel crumbs (empty states, welcome) ----------
+export function Doodle({ className = "" }: { name?: string; className?: string; strokeWidth?: number }) {
+  return (
+    <svg className={`doodle ${className}`} viewBox="0 0 24 16" aria-hidden="true" shapeRendering="crispEdges">
+      <rect x="2" y="9" width="5" height="5" fill="currentColor" />
+      <rect x="10" y="4" width="4" height="4" fill="currentColor" />
+      <rect x="17" y="10" width="3" height="3" fill="currentColor" />
+    </svg>
+  );
 }
 
 // ---------- Wordmark: "crumb" in an outlined pill ----------

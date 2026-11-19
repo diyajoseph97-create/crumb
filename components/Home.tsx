@@ -6,7 +6,7 @@ import type { Recipe } from "@/lib/types";
 import { activeFilterCount, allIngredients, applyFilters, EMPTY_FILTERS, type Filters } from "@/lib/filter";
 import { displayName } from "@/lib/synonyms";
 import { isSavedForLater, isYouTube, totalMinutes } from "@/lib/recipe-utils";
-import { Doodle, Icon, Modal, useViewOnly } from "./ui";
+import { Icon, Modal, useViewOnly } from "./ui";
 import { FilterPanel } from "./FilterPanel";
 import { JobCard, RecipeCard } from "./RecipeCard";
 import { Masonry } from "./Masonry";
@@ -33,11 +33,11 @@ function sortRecipes(list: Recipe[], sort: Sort): Recipe[] {
 }
 
 function useColumns() {
-  const [cols, setCols] = useState(3);
+  const [cols, setCols] = useState(4);
   useEffect(() => {
     const update = () => {
       const w = window.innerWidth;
-      setCols(w < 1100 ? 2 : 3);
+      setCols(w < 700 ? 2 : w < 1100 ? 3 : 4);
     };
     update();
     window.addEventListener("resize", update);
@@ -148,71 +148,67 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
   return (
     <div className="home">
       <section className="browse" aria-labelledby="whats-cooking">
-        <h2 className="section-title" id="whats-cooking">What's cooking?</h2>
+        <div className="home-top">
+          <h1 className="home-title px" id="whats-cooking">{filters.favourites ? "Favourites" : "What's cooking?"}</h1>
+          <p className="home-intro">
+            {viewOnly
+              ? "A cookbook shared with you. Browse, search and open any recipe; nothing you do changes it."
+              : filters.favourites
+                ? "The ones worth making again."
+                : recipes.length
+                  ? `${recipes.length} ${recipes.length === 1 ? "recipe" : "recipes"} saved from Instagram and YouTube. Search by name, ingredient or craving.`
+                  : "Save recipes from Instagram and YouTube, then find them here by name, ingredient or craving."}
+          </p>
+        </div>
         <label className="search">
-          <Icon name="search" size={22} />
+          <span className="search-arrow px" aria-hidden="true">→</span>
           <input
             type="search"
             value={filters.query}
             onChange={(e) => set({ query: e.target.value })}
-            placeholder="Find a recipe, ingredient or craving..."
+            placeholder="paneer, quick dinner, something sweet…"
             aria-label="Search recipes"
           />
           {filters.query && (
-            <button className="icon-btn" onClick={() => set({ query: "" })} aria-label="Clear search">
-              <Icon name="x" size={18} />
-            </button>
+            <button className="link-btn" onClick={() => set({ query: "" })} aria-label="Clear search">Clear</button>
           )}
         </label>
 
         <div className="quick-cats" role="group" aria-label="Meal">
-          {!viewOnly && (
-            <button className={`quick-cat quick-fav ${filters.favourites ? "on" : ""}`} aria-pressed={filters.favourites} onClick={() => set({ favourites: !filters.favourites })}>
-              <Icon name="heart" size={13} filled={filters.favourites} /> Favourites
-            </button>
-          )}
           {QUICK_MEALS.map((m) => {
             const on = m === "All recipes" ? filters.meals.length === 0 : filters.meals.length === 1 && filters.meals[0] === m;
             return (
               <button key={m} className={`quick-cat ${on ? "on" : ""}`} aria-pressed={on} onClick={() => set({ meals: m === "All recipes" || on ? [] : [m] })}>
-                {m}
+                {m === "All recipes" ? "All" : m}
               </button>
             );
           })}
-          <button className={`quick-cat filters-toggle ${sheetCount ? "on-soft" : ""}`} onClick={() => setSheet(true)}>
-            <Icon name="filter" size={15} /> Filter recipes{sheetCount ? ` (${sheetCount})` : ""}
+          <span className="quick-gap" />
+          <button className={`quick-cat filters-toggle ${sheetCount ? "on" : ""}`} onClick={() => setSheet(true)}>
+            Filters{sheetCount ? ` (${sheetCount})` : " +"}
           </button>
+          <label className="sort">
+            <span className="sr-only">Sort recipes</span>
+            <select value={sort} onChange={(e) => setSort((e.target as HTMLSelectElement).value as Sort)} aria-label="Sort recipes">
+              {SORTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+            <span aria-hidden="true">↓</span>
+          </label>
         </div>
 
         {collections.length > 0 && (
           <div className="coll-row" role="group" aria-label="Collections">
-            <span className="coll-row-label">Collections</span>
+            <span className="label">Collections</span>
             {collections.map((c) => {
               const on = filters.collections.includes(c);
               return (
-                <button key={c} className={`coll-chip ${on ? "on" : ""}`} aria-pressed={on} onClick={() => set({ collections: on ? filters.collections.filter((x) => x !== c) : [...filters.collections, c] })}>
-                  <Icon name="bookmark" size={12} /> {c}
+                <button key={c} className={`quick-cat ${on ? "on" : ""}`} aria-pressed={on} onClick={() => set({ collections: on ? filters.collections.filter((x) => x !== c) : [...filters.collections, c] })}>
+                  {c}
                 </button>
               );
             })}
           </div>
         )}
-
-
-
-        <div className="collection-head">
-          <div>
-            <h2 className="section-title">{filters.favourites ? "The ones worth making again." : "Your recipe collection"}</h2>
-            <p className="collection-sub">{filters.favourites ? "All your bookmarked bites, in one place." : "A little something for every craving."}</p>
-          </div>
-          <label className="sort">
-            <span className="sort-label">Sort</span>
-            <select value={sort} onChange={(e) => setSort((e.target as HTMLSelectElement).value as Sort)} aria-label="Sort recipes">
-              {SORTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
-            <Icon name="down" size={16} />
-          </label>
-        </div>
 
         <div className="browse-bar">
           <p className="result-count">
@@ -234,7 +230,6 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
 
         {!loading && recipes.length === 0 && inbox.length === 0 && jobs.length === 0 && (
           <div className="empty">
-            <Doodle name="pot" className="empty-doodle" />
             {viewOnly ? (
               <>
                 <h2 className="h-display">Nothing shared here yet.</h2>
@@ -245,7 +240,7 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
                 <h2 className="h-display">Your cookbook is waiting to be filled.</h2>
                 <p className="muted">That recipe you've been meaning to try? Start here. Save a link and let's give it a home.</p>
                 <button className="btn btn-primary" onClick={onAdd}>
-                  <Icon name="plus" size={18} /> Add your first recipe
+                  + Add your first recipe
                 </button>
               </>
             )}
@@ -254,7 +249,6 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
 
         {!loading && recipes.length > 0 && results.length === 0 && (
           <div className="empty">
-            <Doodle name="crumbs" className="empty-doodle" />
             <h2 className="h-display">Nothing on the menu just yet.</h2>
             <p className="muted">Try another ingredient or loosen up those filters.</p>
             <div className="row gap-sm center">

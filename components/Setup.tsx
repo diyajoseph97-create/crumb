@@ -39,8 +39,8 @@ export function Welcome({ onDone }: { onDone: () => void }) {
     <main className="unlock">
       <form className="unlock-card setup-card" onSubmit={submit}>
         <Doodle name="pot" className="add-doodle" />
-        <h1 className="h-display h-md">Welcome to Crumb's Cookbook</h1>
-        <p className="muted">A little home for all your saved recipes. Paste an Instagram or YouTube link and Crumb writes up the recipe for you. It just needs a free Gemini key to read the videos.</p>
+        <h1 className="h-display h-md">Welcome to crumbs</h1>
+        <p className="muted">A little home for all your saved recipes. Paste an Instagram or YouTube link and crumbs writes up the recipe for you. It just needs a free Gemini key to read the videos.</p>
         <div className="setup-form col gap-sm">
           <KeyField value={key} onChange={(v) => { setKey(v); setError(null); }} />
           {error && <p className="form-error" role="alert">{error}</p>}
@@ -96,7 +96,7 @@ export function SettingsPanel({ onClose, onRestored, onKeyChange, recipes = [] }
   return (
     <div className="settings">
       <h2 className="h-display h-md">A few little things.</h2>
-      <p className="settings-intro">Make Crumb feel like your cookbook.</p>
+      <p className="settings-intro">Make crumbs feel like your cookbook.</p>
 
       <div className="settings-tabs" role="tablist" aria-label="Settings">
         {tabs.map((t) => (
@@ -172,7 +172,7 @@ function InstallSection() {
     const base = `${location.origin}${location.pathname}?add=`;
     return (
       <section className="settings-section">
-        <h3 className="settings-h">Share to Crumb from Instagram or YouTube (iPhone)</h3>
+        <h3 className="settings-h">Share to crumbs from Instagram or YouTube (iPhone)</h3>
         <p className="muted small">iPhones don't let websites appear in the share menu, but a free Apple Shortcut can do it. One-time setup:</p>
         <ol className="help-list">
           <li>Open the <strong>Shortcuts</strong> app and tap <strong>+</strong>. Name it <strong>Save to Crumb</strong>.</li>
@@ -181,8 +181,8 @@ function InstallSection() {
           <li>Add the action <strong>Open URLs</strong> and set it to: <code className="code-line">{base}</code> followed by the <em>URL Encoded Text</em> variable.</li>
           <li>Done. In Instagram or YouTube tap <strong>Share → Save to Crumb</strong>.</li>
         </ol>
-        <button className="btn btn-outline btn-sm" onClick={() => navigator.clipboard.writeText(base).catch(() => {})}>Copy the Crumb address for step 4</button>
-        <p className="muted small" style={{ marginTop: 10 }}>Tip: in Safari, tap <strong>Share → Add to Home Screen</strong> to keep Crumb on your home screen.</p>
+        <button className="btn btn-outline btn-sm" onClick={() => navigator.clipboard.writeText(base).catch(() => {})}>Copy the crumbs address for step 4</button>
+        <p className="muted small" style={{ marginTop: 10 }}>Tip: in Safari, tap <strong>Share → Add to Home Screen</strong> to keep crumbs on your home screen.</p>
       </section>
     );
   }
@@ -190,17 +190,17 @@ function InstallSection() {
     <section className="settings-section">
       <h3 className="settings-h">Share from Instagram or YouTube (Android)</h3>
       {installed ? (
-        <p className="muted small">Crumb is installed. Tap <strong>Share</strong> on a Reel or YouTube video, then pick <strong>Crumb</strong>. YouTube videos are read straight away; Instagram links go to <em>Saved for later</em> until you add the downloaded video.</p>
+        <p className="muted small">crumbs is installed. Tap <strong>Share</strong> on a Reel or YouTube video, then pick <strong>Crumb</strong>. YouTube videos are read straight away; Instagram links go to <em>Saved for later</em> until you add the downloaded video.</p>
       ) : (
         <>
           <p className="muted small">
-            Install Crumb on your Android phone and it appears in the share menu. Open this page in <strong>Chrome</strong> on the phone, then tap{" "}
+            Install crumbs on your Android phone and it appears in the share menu. Open this page in <strong>Chrome</strong> on the phone, then tap{" "}
             {canInstall() ? "the button below" : <>the <strong>⋮</strong> menu → <strong>Install app</strong> (or <strong>Add to home screen</strong>)</>}.
             The phone keeps its own cookbook, separate from your laptop. Use Backup to move recipes across.
           </p>
           {canInstall() && (
             <button className="btn btn-primary btn-sm" onClick={() => promptInstall()}>
-              <Icon name="down" size={16} /> Install Crumb
+              <Icon name="down" size={16} /> Install crumbs
             </button>
           )}
         </>
@@ -274,7 +274,7 @@ function SyncSection() {
           </form>
         ) : (
           <form className="col gap-sm" onSubmit={(e) => { e.preventDefault(); if (code.length < 6) return setMsg({ text: "Type the 6-digit code from the email.", bad: true }); run(async () => { await verifyCode(email, code); refresh(); syncNow(); }); }}>
-            <p className="muted small">We've emailed <strong>{email}</strong>. Open that email <strong>on this device</strong> and tap <strong>Sign in</strong>. Crumb opens already signed in. (If the email shows a code instead, type it below.)</p>
+            <p className="muted small">We've emailed <strong>{email}</strong>. Open that email <strong>on this device</strong> and tap <strong>Sign in</strong>. crumbs opens already signed in. (If the email shows a code instead, type it below.)</p>
             <input className="input" inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="Code (only if the email has one)" aria-label="Sign-in code" autoComplete="one-time-code" />
             <div className="row gap-xs wrap">
               <button className="btn btn-primary btn-sm" disabled={busy}>{busy ? "Checking…" : "Sign in with code"}</button>
@@ -300,13 +300,13 @@ function SyncSection() {
           {link && (
             <button className="btn btn-outline btn-sm" onClick={async () => {
               const nav = navigator as Navigator & { share?: (d: { title?: string; url?: string }) => Promise<void> };
-              if (nav.share && /Android|iPhone|iPad/i.test(navigator.userAgent)) await nav.share({ title: "Set up Crumb sync", url: link }).catch(() => {});
+              if (nav.share && /Android|iPhone|iPad/i.test(navigator.userAgent)) await nav.share({ title: "Set up crumbs sync", url: link }).catch(() => {});
               else { await navigator.clipboard.writeText(link).catch(() => {}); setMsg({ text: "Set-up link copied. Open it on your other device, then sign in with the same email." }); }
             }}>Set up another device</button>
           )}
           <button className="btn btn-ghost btn-sm" onClick={() => { signOut(); resetSyncState(); refresh(); }}>Sign out</button>
         </div>
-        <p className="muted small">Your recipes stay on this device too, so Crumb works offline and if sync pauses.</p>
+        <p className="muted small">Your recipes stay on this device too, so crumbs works offline and if sync pauses.</p>
       </div>
     );
   }
@@ -383,7 +383,7 @@ function ShareSection({ recipes }: { recipes: Recipe[] }) {
         <Icon name="share" size={16} /> {busy ? "Making the link…" : "Share a view-only link"}
       </button>
       {setupNeeded && (
-        <p className="sync-warn small">Sharing needs one more step in Supabase: run the sharing SQL from Crumb's README in the SQL Editor, then try again.</p>
+        <p className="sync-warn small">Sharing needs one more step in Supabase: run the sharing SQL from crumbs' README in the SQL Editor, then try again.</p>
       )}
       {msg && <p className={msg.bad ? "form-error" : "form-ok"} role="status">{msg.text}</p>}
       {shares && shares.length > 0 && (
@@ -439,7 +439,7 @@ function KeyShareToggle() {
               setOn(next);
               setNote({ text: next ? "Your other devices will pick up this key after signing in." : "Key removed from your account. It stays on this device." });
             } catch {
-              setNote({ text: "Couldn't save it. Run the latest Crumb SQL file in Supabase, then try again.", bad: true });
+              setNote({ text: "Couldn't save it. Run the latest crumbs SQL file in Supabase, then try again.", bad: true });
             }
           }}
         />

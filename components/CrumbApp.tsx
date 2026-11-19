@@ -14,8 +14,8 @@ import { canShare, makeShareLink, sendLink } from "@/lib/sharing";
 import { ShoppingList, useShoppingCount } from "./ShoppingList";
 import { onRemoteChanges, onSyncStatus, getSyncStatus, type SyncStatus } from "@/lib/sync";
 import { forgetJob, newJob, runImport, saveJob, savedJobs, type ImportInput, type ImportJob } from "@/lib/importer";
-import { isSavedForLater, isYouTube } from "@/lib/recipe-utils";
-import { Doodle, Icon, Modal, ViewOnlyContext } from "./ui";
+import { isSavedForLater, isYouTube, youtubeCreator, youtubeVideoId } from "@/lib/recipe-utils";
+import { Doodle, Modal, ViewOnlyContext } from "./ui";
 
 // Simple page routing using the part of the URL after "#":
 //   (none)        library
@@ -96,7 +96,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
     setRoute({ page: "home" });
     const s = await takeShared();
     if (!s) {
-      toast("Crumb opened from Share, but nothing came through. Settings → Share from Instagram shows what arrived.");
+      toast("crumbs opened from Share, but nothing came through. Settings → Share from Instagram shows what arrived.");
       return true;
     }
     const all = [s.url, s.text, s.title].filter(Boolean).join("\n");
@@ -271,6 +271,18 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
     [geminiKey, store],
   );
 
+  // Older YouTube recipes: look up the channel once, when the recipe is opened.
+  const creatorAsked = useRef(new Set<string>());
+  useEffect(() => {
+    if (viewOnly || route.page !== "recipe") return;
+    const r = recipes.find((x) => x.id === route.id);
+    const yt = r && !r.creator ? youtubeVideoId(r.sourceShortcode || r.sourceUrl) : null;
+    if (!r || !yt || creatorAsked.current.has(r.id)) return;
+    creatorAsked.current.add(r.id);
+    youtubeCreator(yt).then(async (c) => { if (c) upsert(await store.update(r.id, { creator: c })); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route, recipes]);
+
   // Carry on with recipes that were still being added when Crumb was last closed.
   const resumed = useRef(false);
   useEffect(() => {
@@ -433,11 +445,18 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
     <ViewOnlyContext.Provider value={{ on: Boolean(viewOnly), singleRecipe: viewOnly?.singleRecipe }}>
     <div className="app">
       <header className="topbar">
-        <button className="wordmark" onClick={() => !viewOnly?.singleRecipe && go("")} aria-label="Cookbook home">
-          <span className="wordmark-title">{viewOnly ? viewOnly.title : "Crumb's Cookbook"}</span>
-          <span className="wordmark-sub">{viewOnly ? "Shared with you · view only" : "A little home for all your saved recipes."}</span>
+        <button className="wordmark px" onClick={() => !viewOnly?.singleRecipe && go("")} aria-label="Cookbook home">
+          {viewOnly ? viewOnly.title : "crumbs"}
         </button>
         <nav className="topnav" aria-label="Cookbook">
+          {viewOnly ? <span className="nav-note">Shared with you · view only</span> : (
+            <button
+              className={`nav-link nav-recipes ${route.page === "home" && !filters.favourites ? "on" : ""}`}
+              onClick={() => { setFilters({ ...filters, favourites: false }); go(""); }}
+            >
+              Recipes
+            </button>
+          )}
           {!viewOnly && (
             <button
               className={`nav-link fav-link ${filters.favourites ? "on" : ""}`}
@@ -447,21 +466,21 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
                 go("");
               }}
             >
-              <Icon name="heart" size={15} filled={filters.favourites} /> <span className="nav-text">Favourites</span>
+              Favourites
             </button>
           )}
           <button className="nav-link list-link" onClick={() => setShopOpen(true)} aria-label={`Shopping list${shopCount ? `, ${shopCount} recipes` : ""}`}>
-            <Icon name="list" size={15} /> <span className="nav-text">List</span>{shopCount ? <span className="nav-count">{shopCount}</span> : null}
+            List{shopCount ? ` (${shopCount})` : ""}
           </button>
           {!viewOnly && (
             <button className="nav-link settings-link" onClick={() => setSettingsOpen(true)} aria-label="Settings">
-              <Icon name="gear" size={15} /> <span className="nav-text">Settings</span>
+              Settings
               {sync.state === "paused" && <span className="sync-dot" title="Sync paused" aria-label="Sync paused" />}
             </button>
           )}
           {!viewOnly && (
-            <button className="btn btn-accent add-btn" onClick={() => setAdd({ open: true, fill: null, shared: null })} aria-label="Add recipe">
-              <Icon name="plus" size={17} /> <span className="add-label">Add a recipe</span>
+            <button className="btn btn-primary btn-sm add-btn" onClick={() => setAdd({ open: true, fill: null, shared: null })} aria-label="Add recipe">
+              <span aria-hidden="true">+</span><span className="add-label"> Add recipe</span>
             </button>
           )}
         </nav>

@@ -56,8 +56,8 @@ export function CookMode({ recipe, lines, servingsLabel, onClose, onCooked }: Pr
     <div className="cook" role="dialog" aria-modal="true" aria-label={`Cooking ${recipe.name}`}>
       <header className="cook-top">
         <div className="cook-title">
-          <span className="cook-kicker">Cooking</span>
-          <span className="cook-name">{recipe.name}</span>
+          <span className="cook-kicker label">Cooking</span>
+          <span className="cook-name px">{recipe.name}</span>
         </div>
         <button ref={closeRef} className="icon-btn lg" onClick={onClose} aria-label="Leave cook mode"><Icon name="x" /></button>
       </header>
@@ -66,7 +66,7 @@ export function CookMode({ recipe, lines, servingsLabel, onClose, onCooked }: Pr
       <main className="cook-body" aria-live="polite">
         {page === 0 && (
           <section>
-            <h2 className="cook-h">Get everything ready</h2>
+            <h2 className="cook-h px">Get everything ready</h2>
             <p className="cook-sub">{servingsLabel} · tap each one as you set it out</p>
             <ul className="cook-ings">
               {lines.map((l, i) => {
@@ -88,14 +88,15 @@ export function CookMode({ recipe, lines, servingsLabel, onClose, onCooked }: Pr
 
         {stepIndex >= 0 && stepIndex < steps.length && (
           <section>
-            <p className="cook-step-no">Step {stepIndex + 1} of {steps.length}</p>
+            <p className="cook-step-no label">Step {stepIndex + 1} of {steps.length}</p>
+            <p className="cook-big px" aria-hidden="true">{stepIndex + 1}.</p>
             <p className="cook-step">{steps[stepIndex]}</p>
           </section>
         )}
 
         {page === total - 1 && (
           <section className="cook-done">
-            <h2 className="cook-h">Enjoy your {recipe.name}!</h2>
+            <h2 className="cook-h px">Enjoy your {recipe.name}!</h2>
             {onCooked ? (
               saved ? (
                 <p className="cook-sub">Marked as cooked{rating ? ` · ${rating} ${rating === 1 ? "star" : "stars"}` : ""}. Nice one.</p>
@@ -117,7 +118,7 @@ export function CookMode({ recipe, lines, servingsLabel, onClose, onCooked }: Pr
 
       <footer className="cook-nav">
         <button className="btn btn-outline btn-lg" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}>
-          <Icon name="back" size={18} /> Back
+          ← Back
         </button>
         {page < total - 1 ? (
           <button className="btn btn-primary btn-lg" onClick={() => setPage((p) => Math.min(total - 1, p + 1))}>

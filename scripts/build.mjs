@@ -29,14 +29,15 @@ const html = `<!DOCTYPE html>
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="theme-color" content="#fdf6ec" />
+<meta name="theme-color" content="#fafaf8" />
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
 <meta name="robots" content="noindex, nofollow" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="Crumb" />
-<title>Crumb's Cookbook</title>
-<link rel="preload" href="fonts/fraunces-latin-soft-normal.woff2" as="font" type="font/woff2" crossorigin />
+<title>crumbs</title>
+<link rel="preload" href="fonts/geist-pixel-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="fonts/geist-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="icon" href="data:image/svg+xml,${encodeURIComponent(icon)}" />
 <style>${css}</style>
 </head>

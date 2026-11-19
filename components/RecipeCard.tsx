@@ -2,7 +2,6 @@ import { memo, useState } from "react";
 import type { Recipe } from "@/lib/types";
 import { formatMinutes, isIncomplete, isYouTube, totalMinutes } from "@/lib/recipe-utils";
 import type { ImportJob } from "@/lib/importer";
-import { Composition } from "./Shapes";
 import { Icon, useViewOnly } from "./ui";
 import { RecipeImage } from "./RecipeImage";
 
@@ -13,7 +12,6 @@ function RecipeCardView({
   recipe, onOpen, onFavourite,
 }: { recipe: Recipe; onOpen: () => void; onFavourite: () => void }) {
   const total = totalMinutes(recipe);
-  const tags = [...recipe.tags].slice(0, 2);
   const viewOnly = useViewOnly().on;
   const incomplete = isIncomplete(recipe) && !viewOnly;
   return (
@@ -23,28 +21,16 @@ function RecipeCardView({
           <RecipeImage recipe={recipe} />
           {incomplete && (
             <span className="card-incomplete" title="A few details are missing">
-              <Icon name="pen" size={12} /> <span className="ci-text">Needs a little finishing touch</span>
+              Needs details
             </span>
           )}
         </div>
         <div className="card-body">
-          <h3 className="card-title">{recipe.name || "Untitled recipe"}</h3>
-          {(recipe.cuisines[0] || recipe.meals[0]) && (
-            <p className="card-sub">
-              {[recipe.cuisines.find((c) => c !== "Indian") ?? recipe.cuisines[0], recipe.meals[0]].filter(Boolean).join(" · ")}
-            </p>
-          )}
-          <div className="card-foot">
-            {total != null && (
-              <span className="card-time">
-                {recipe.timesEstimated ? "~" : ""}
-                {formatMinutes(total).replace("min", "minutes").replace("hr", "hour")}
-              </span>
-            )}
-            {tags.map((t) => (
-              <span key={t} className="mini-tag">{t}</span>
-            ))}
-          </div>
+          <h3 className="card-title px">{recipe.name || "Untitled recipe"}</h3>
+          {recipe.creator && <p className="card-by">by {recipe.creator.startsWith("@") || recipe.creator.includes(" ") ? recipe.creator : `@${recipe.creator}`}</p>}
+          <p className="card-sub">
+            {[recipe.cuisines.find((c) => c !== "Indian") ?? recipe.cuisines[0], total != null ? `${recipe.timesEstimated ? "~" : ""}${formatMinutes(total)}` : null].filter(Boolean).join(" · ")}
+          </p>
         </div>
       </button>
       {!viewOnly && <button
@@ -68,12 +54,12 @@ export function JobCard({ job, onRetry, onDismiss }: { job: ImportJob; onRetry: 
     <article className={`card job-card ${failed ? "is-failed" : "is-adding"}`} aria-live="polite">
       <div className="card-media">
         <div className="job-media">
-          {job.thumb && thumbOk ? <img src={job.thumb} alt="" className="job-thumb" onError={() => setThumbOk(false)} /> : <Composition seed={7} ratio={0.75} className="job-art" />}
+          {job.thumb && thumbOk ? <img src={job.thumb} alt="" className="job-thumb" onError={() => setThumbOk(false)} /> : null}
           {!failed && <span className="job-shimmer" aria-hidden="true" />}
         </div>
       </div>
       <div className="card-body">
-        <h3 className="card-title">{failed ? "Couldn't add this one" : <>Fetching the good stuff<span className="dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span></>}</h3>
+        <h3 className="card-title px">{failed ? "Couldn't add this one" : <>Fetching the good stuff<span className="dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span></>}</h3>
         <p className="card-sub">{failed ? job.error : `${from} · you can keep browsing`}</p>
         {failed && (
           <div className="row gap-xs wrap">

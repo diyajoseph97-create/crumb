@@ -56,6 +56,7 @@ export function normaliseRecipe(r: any): Recipe {
     suggestedTags: pick(r.suggestedTags, TAGS),
     nutrition: cleanNutrition(r.nutrition),
     healthTips: cleanTips(r.healthTips),
+    creator: typeof r.creator === "string" && r.creator.trim() ? r.creator.trim().slice(0, 80) : null,
     myNotes: typeof r.myNotes === "string" && r.myNotes.trim() ? r.myNotes.slice(0, 4000) : null,
     collections: Array.isArray(r.collections) ? [...new Set((r.collections as unknown[]).filter((c): c is string => typeof c === "string" && c.trim() !== "").map((c) => c.trim().slice(0, 40)))].slice(0, 20) : [],
     cookedCount: Number.isInteger(r.cookedCount) && r.cookedCount > 0 ? r.cookedCount : 0,

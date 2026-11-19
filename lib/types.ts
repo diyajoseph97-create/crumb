@@ -43,6 +43,8 @@ export type Recipe = {
   nutrition: Nutrition | null;
   /** Suggestions for a healthier version (shown in the notes card; the recipe itself is never changed). */
   healthTips?: string[] | null;
+  /** Who made the original: Instagram handle or YouTube channel, e.g. "@kitchenstories". */
+  creator?: string | null;
   /** Your own notes ("used half the chilli"). Not shown on shared links. */
   myNotes?: string | null;
   /** Your own groups, e.g. "Weeknight", "Party". */

@@ -106,6 +106,19 @@ export const youtubeVideoId = (urlOrKey: string | null | undefined): string | nu
 export const SOURCE_LINK =
   /https?:\/\/(?:(?:www\.|m\.)?(?:instagram\.com|instagr\.am)\/(?:share\/)?(?:(?:reel|reels|p|tv)\/)?[A-Za-z0-9_-]{5,}|(?:www\.|m\.|music\.)?(?:youtube\.com\/(?:watch\?[^\s]*v=|shorts\/|live\/|embed\/)|youtu\.be\/)[A-Za-z0-9_-]{11})\/?(?:[?&][^\s]*)?/i;
 
+/** The channel behind a YouTube video, from YouTube's public oEmbed: "@handle", else the channel name. */
+export async function youtubeCreator(id: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(`https://www.youtube.com/watch?v=${id}`)}`);
+    if (!res.ok) return null;
+    const o = await res.json();
+    const handle = typeof o.author_url === "string" ? o.author_url.match(/\/(@[\w.-]+)/)?.[1] : null;
+    return handle || (typeof o.author_name === "string" && o.author_name.trim() ? o.author_name.trim().slice(0, 80) : null);
+  } catch {
+    return null;
+  }
+}
+
 /** Best available YouTube thumbnail (maxres when it exists, else hq). */
 export async function youtubeThumbnail(id: string): Promise<string> {
   const max = `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`;
@@ -142,6 +155,7 @@ export function emptyDraft(): RecipeDraft {
     suggestedTags: [],
     nutrition: null,
     healthTips: null,
+    creator: null,
     myNotes: null,
     collections: [],
     cookedCount: 0,

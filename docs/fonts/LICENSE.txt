@@ -1,6 +1,6 @@
-Fonts: Fraunces, Shrikhand, Instrument Sans, Barlow Condensed, Courier Prime, Caveat — all SIL Open Font License 1.1 (via @fontsource).
+Fonts: Geist and Geist Pixel (via @fontsource), SIL Open Font License 1.1.
 
-Copyright 2022 The Instrument Sans Project Authors (https://github.com/Instrument/instrument-sans) InstrumentSans-Italic[wdth,wght].ttf: Copyright 2022 The Instrument Sans Project Authors (https://github.com/Instrument/instrument-sans)
+Copyright 2026 The Geist Project Authors (https://github.com/vercel/geist-font)
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:

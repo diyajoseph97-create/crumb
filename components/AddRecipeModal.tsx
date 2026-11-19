@@ -139,7 +139,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
         sourceShortcode: code,
         originalCaption: caption.trim() || null,
         importNotes: isYouTube(code)
-          ? "Saved for later. Tap “Read it” and Crumb watches the YouTube video for you."
+          ? "Saved for later. Tap “Read it” and crumbs watches the YouTube video for you."
           : "Instagram only shared the link. Download the Reel (⋯ → Download in Instagram), then tap “Add the video or screenshots” and pick it.",
       });
       onSaved(recipe);
@@ -203,7 +203,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
               <h2 className="h-display h-md">{fillRecipe ? "Fill in the missing bits" : "Found something delicious?"}</h2>
               <p className="muted">
                 {fillRecipe
-                  ? `Add a recording, screenshots or the caption of “${fillRecipe.name}”. Crumb fills in what's missing and keeps what you have.`
+                  ? `Add a recording, screenshots or the caption of “${fillRecipe.name}”. crumbs fills in what's missing and keeps what you have.`
                   : "Save it here before it gets lost in your feed."}
               </p>
             </div>
@@ -219,7 +219,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
                   ))}
                   <option value="new">None of these, make a new recipe</option>
                 </select>
-                <span className="hint">Crumb fills in the saved Reel and keeps its link.</span>
+                <span className="hint">crumbs fills in the saved Reel and keeps its link.</span>
               </label>
             )}
 
@@ -287,7 +287,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
             {help && (
               <ul className="help-list">
                 <li><strong>YouTube:</strong> the link is all you need.</li>
-                <li><strong>Add the link</strong> so you can rewatch the original and Crumb can warn you about duplicates.</li>
+                <li><strong>Add the link</strong> so you can rewatch the original and crumbs can warn you about duplicates.</li>
                 <li><strong>Paste the caption too.</strong> Most creators put the ingredient amounts there, and a downloaded video doesn't include it.</li>
                 <li><strong>Only have an Instagram link?</strong> Save it now and add the downloaded video later.</li>
               </ul>
@@ -307,7 +307,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
                 </button>
               )}
               <button type="submit" className="btn btn-primary btn-lg grow">
-                <Icon name="plus" size={18} /> {fillRecipe ? "Fill in the missing bits" : "Save to Crumb"}
+                <Icon name="plus" size={18} /> {fillRecipe ? "Fill in the missing bits" : "Save to crumbs"}
               </button>
             </div>
           </form>

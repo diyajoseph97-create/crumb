@@ -5,14 +5,14 @@ import { syncNow } from "./sync";
 const TITLE = "crumb-share-title";
 export const getShareTitle = () => {
   try {
-    return localStorage.getItem(TITLE) || "Crumb's Cookbook";
+    return localStorage.getItem(TITLE) || "crumbs";
   } catch {
-    return "Crumb's Cookbook";
+    return "crumbs";
   }
 };
 export const setShareTitle = (t: string) => {
   try {
-    localStorage.setItem(TITLE, t.trim() || "Crumb's Cookbook");
+    localStorage.setItem(TITLE, t.trim() || "crumbs");
   } catch {}
 };
 

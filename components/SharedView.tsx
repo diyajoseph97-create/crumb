@@ -21,8 +21,8 @@ export function SharedView({ code }: { code: string }) {
       .then((s) => {
         if (!s) return setState("gone");
         const recipes = s.recipes.map(normaliseRecipe).filter((r) => !isSavedForLater(r));
-        setState({ title: s.title || "Crumb's Cookbook", recipeId: s.recipe_id, recipes });
-        document.title = s.title || "Crumb's Cookbook";
+        setState({ title: s.title || "crumbs", recipeId: s.recipe_id, recipes });
+        document.title = s.title || "crumbs";
         if (s.recipe_id && !location.hash) location.hash = `recipe-${s.recipe_id}`;
       })
       .catch(() => setState("error"));

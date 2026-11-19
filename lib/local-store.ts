@@ -13,7 +13,7 @@ function openDb(): Promise<IDBDatabase> {
     const req = indexedDB.open(DB_NAME, 1);
     req.onupgradeneeded = () => req.result.createObjectStore(STORE, { keyPath: "id" });
     req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(new Error("This browser couldn't open Crumb's storage. Private/incognito windows may block it."));
+    req.onerror = () => reject(new Error("This browser couldn't open crumbs' storage. Private/incognito windows may block it."));
   });
 }
 
@@ -107,10 +107,10 @@ export async function restoreBackup(file: File): Promise<number> {
   try {
     data = JSON.parse(await file.text());
   } catch {
-    throw new Error("That file isn't a Crumb backup.");
+    throw new Error("That file isn't a crumbs backup.");
   }
   const list = Array.isArray(data) ? data : data?.recipes;
-  if (!Array.isArray(list)) throw new Error("That file isn't a Crumb backup.");
+  if (!Array.isArray(list)) throw new Error("That file isn't a crumbs backup.");
   const recipes = list.filter((r: any) => r && typeof r.id === "string").map(normaliseRecipe);
   const d = await db();
   await new Promise<void>((resolve, reject) => {

@@ -1,6 +1,6 @@
 # Crumb
 
-Crumb's Cookbook: a little home for all your saved recipes. Add an Instagram Reel or a YouTube video and Crumb turns it into a tidy, searchable recipe.
+crumbs: a little home for all your saved recipes. Add an Instagram Reel or a YouTube video and Crumb turns it into a tidy, searchable recipe.
 
 **Open it:** https://diyajoseph97-create.github.io/crumb/
 

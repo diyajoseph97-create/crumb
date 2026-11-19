@@ -4,7 +4,7 @@ import type { Recipe, RecipeDraft } from "./types";
 import type { Store } from "./store";
 import { mergeIntoExisting, readRecipe } from "./gemini";
 import { captureFrame } from "./video-frame";
-import { canonicalInstagramUrl, emptyDraft, isYouTube, youtubeThumbnail, youtubeVideoId } from "./recipe-utils";
+import { canonicalInstagramUrl, emptyDraft, isYouTube, youtubeCreator, youtubeThumbnail, youtubeVideoId } from "./recipe-utils";
 
 export type ImportInput = {
   files: File[];
@@ -59,6 +59,11 @@ export async function runImport(job: ImportInput, deps: { apiKey: string; store:
   }
   const ytId = youtubeVideoId(ytUrl);
   if (!imageUrl && ytId && !existing?.imageUrl) imageUrl = await youtubeThumbnail(ytId).catch(() => null);
+  // YouTube says who the channel is; that beats anything read from the video.
+  if (ytId && !existing?.creator) {
+    const channel = await youtubeCreator(ytId);
+    if (channel) result.draft.creator = channel;
+  }
 
   const usedCaption = job.caption.trim() || existing?.originalCaption;
   const sources = [video || ytUrl ? "video" : "", job.files.some((f) => f.type.startsWith("image/")) ? "screenshots" : "", usedCaption ? "caption" : ""].filter(Boolean);

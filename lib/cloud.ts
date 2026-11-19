@@ -254,7 +254,7 @@ export function readShareCode(code: string): { url: string; key: string; token: 
 export async function createShare(recipeId: string | null, title: string): Promise<Share> {
   const s = getSession();
   if (!s) throw new CloudError("Not signed in.", 401);
-  const share = { token: randomToken(), recipe_id: recipeId, title: title.trim().slice(0, 80) || "Crumb's Cookbook", user_id: s.user_id };
+  const share = { token: randomToken(), recipe_id: recipeId, title: title.trim().slice(0, 80) || "crumbs", user_id: s.user_id };
   await rest("shares", { method: "POST", headers: { prefer: "return=minimal" }, body: JSON.stringify(share) });
   return { ...share, created_at: new Date().toISOString() };
 }

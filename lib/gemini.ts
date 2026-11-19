@@ -96,6 +96,7 @@ Strict rules:
 - Ingredients, quantities and steps: use ONLY what is said, shown on screen, written in the caption/screenshots, or clearly visible being added. Never invent them.
 - Amounts matter most. Look and listen carefully for them: spoken amounts ("two spoons of chilli powder", "a cup of rice", "one ladle of oil"), on-screen text, labels on packets or measuring cups, and countable items you can see (e.g. "3 onions" when three are clearly chopped). Write them as given, e.g. "2 spoons", "1 ladle", "3".
 - If an ingredient's amount isn't said, shown, written or clearly countable, write the ingredient without an amount (e.g. "Butter").
+- creator: who made the original video/post: the Instagram handle (with @) or YouTube channel name, if you can see or hear it (watermark, on-screen handle, caption signature, channel name, "follow me at…"). Use null if you can't tell. Never guess.
 - healthier_tips: 3 or 4 short, practical ideas to make this dish healthier, specific to its ingredients and method (a swap, a cooking method, more vegetables/protein/fibre, less oil/sugar/salt, portion). Each under 18 words, friendly, no medical claims. They are suggestions only: never change the ingredients or steps because of them. Empty if there's no recipe.
 - If no method is given anywhere, return an empty steps list. When steps come from the video, write them as clear instructions in the order shown.
 - Times and servings: use stated values. If not stated, give a realistic estimate from the steps and quantities and set the matching *_estimated flag to true.
@@ -133,6 +134,7 @@ const SCHEMA = {
     meals: { type: "ARRAY", items: { type: "STRING", enum: [...MEALS] } },
     diet_tags: { type: "ARRAY", items: { type: "STRING", enum: ["Vegetarian", "Vegan", "Gluten-free", "Dairy-free", "Egg-free"] }, description: "Only if confident from the ingredients" },
     healthier_tips: { type: "ARRAY", items: { type: "STRING" }, description: "3-4 short ideas to make this dish healthier" },
+    creator: { type: "STRING", nullable: true, description: "Instagram handle or YouTube channel of who made it, or null" },
     nutrition_per_serving: {
       type: "OBJECT",
       nullable: true,
@@ -320,6 +322,7 @@ export function toResult(o: any, usedVideo: boolean): ReadResult {
       suggestedTags: diet.filter((t) => SENSITIVE_TAGS.includes(t)),
       nutrition,
       healthTips: cleanTips(o.healthier_tips),
+      creator: typeof o.creator === "string" && o.creator.trim() && !/^(null|unknown|n\/a)$/i.test(o.creator.trim()) ? o.creator.trim().slice(0, 80) : null,
     },
   };
 }
@@ -340,6 +343,7 @@ export function mergeIntoExisting(existing: Recipe, found: Partial<RecipeDraft>)
     patch.servings = found.servings;
     patch.servingsEstimated = Boolean(found.servingsEstimated);
   }
+  if (!existing.creator && found.creator) patch.creator = found.creator;
   if (!existing.cuisines.length && found.cuisines?.length) patch.cuisines = found.cuisines;
   if (!existing.meals.length && found.meals?.length) patch.meals = found.meals;
   if (!existing.nutrition && found.nutrition) patch.nutrition = found.nutrition;

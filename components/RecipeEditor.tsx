@@ -95,6 +95,7 @@ export function RecipeEditor({ initial, title, onCancel, onSave, uploadImage }: 
         ...d,
         name: d.name.trim(),
         sourceUrl: url,
+        creator: d.creator?.trim() || null,
         sourceShortcode: url ? instagramShortcode(url) : null,
         ingredients: rows
           .filter((r) => r.original.trim())
@@ -171,6 +172,11 @@ export function RecipeEditor({ initial, title, onCancel, onSave, uploadImage }: 
           </div>
 
           <label className="field">
+            <span className="field-label">Recipe by</span>
+            <input className="input" value={d.creator ?? ""} onChange={(e) => set({ creator: e.target.value })} placeholder="@handle or channel name" maxLength={80} />
+          </label>
+
+          <label className="field">
             <span className="field-label">Recipe link (Instagram or YouTube)</span>
             <input className="input" type="url" value={d.sourceUrl ?? ""} onChange={(e) => set({ sourceUrl: e.target.value })} placeholder="Instagram Reel or YouTube link" />
           </label>
@@ -206,7 +212,7 @@ export function RecipeEditor({ initial, title, onCancel, onSave, uploadImage }: 
               <button type="button" className="btn btn-outline btn-sm" onClick={applyBulk}>Add these</button>
             </div>
           )}
-          <p className="muted small">Write each ingredient exactly as you like. The small grey name is what Crumb uses for ingredient search, and you can change it.</p>
+          <p className="muted small">Write each ingredient exactly as you like. The small grey name is what crumbs uses for ingredient search, and you can change it.</p>
           <ul className="ed-ings">
             {rows.map((r) => (
               <li key={r.id}>

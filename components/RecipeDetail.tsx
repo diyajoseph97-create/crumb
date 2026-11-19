@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
 import type { Recipe } from "@/lib/types";
 import { formatMinutes, missingParts, isIncomplete, totalIsPartial, totalMinutes } from "@/lib/recipe-utils";
 import { scaleFactor, scaleLine, splitIngredient } from "@/lib/scale";
-import { ConfirmDialog, Icon, PixelIcon, Stamp, useRecipeNumber, useViewOnly } from "./ui";
+import { ConfirmDialog, Icon, PixelIcon, Stamp, useViewOnly } from "./ui";
 import { RecipeImage } from "./RecipeImage";
 
 type Props = {
@@ -127,7 +127,6 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
   const stepServings = (d: number) => setServings((s) => Math.max(1, Math.min(50, s + d)));
   const categories = r.cuisines.length > 1 ? r.cuisines.filter((c) => c !== "Indian") : r.cuisines;
   const cooked = r.cookedCount ?? 0;
-  const no = useRecipeNumber(r.id);
   const stampText = r.tags.length ? r.tags.slice(0, 3).join(" · ") : r.cuisines.filter((c) => c !== "Indian")[0] ?? r.cuisines[0] ?? "";
 
   return (
@@ -191,10 +190,7 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
             )}
           </div>
           <div className="rp-label">
-            <p className="rp-kicker">
-              {no && <span className="rp-no-num px" aria-label={`Recipe number ${no}`}>{no}</span>}
-              {categories.length > 0 && <span className="label">{categories.join(" · ")}</span>}
-            </p>
+            {categories.length > 0 && <p className="rp-kicker label">{categories.join(" · ")}</p>}
             <h1 className="rp-title px">{r.name || "Untitled recipe"}</h1>
           </div>
           <p className="rp-by">

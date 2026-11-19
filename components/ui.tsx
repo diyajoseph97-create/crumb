@@ -136,18 +136,6 @@ export type ViewOnlyInfo = { on: boolean; singleRecipe?: boolean };
 export const ViewOnlyContext = createContext<ViewOnlyInfo>({ on: false });
 export const useViewOnly = () => useContext(ViewOnlyContext);
 
-// ---------- Recipe numbers: No. 001 is the first recipe you saved ----------
-// Worked out from the order recipes were saved, so every device shows the same numbers.
-export const NumbersContext = createContext<Map<string, number>>(new Map());
-export function useRecipeNumber(id: string): string | null {
-  const n = useContext(NumbersContext).get(id);
-  return n ? String(n).padStart(3, "0") : null;
-}
-export function numberRecipes(recipes: { id: string; createdAt: string }[]): Map<string, number> {
-  const sorted = [...recipes].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
-  return new Map(sorted.map((r, i) => [r.id, i + 1]));
-}
-
 // ---------- Pixel icons (8×8, drawn like the pixel type) ----------
 const PIXELS: Record<string, string[]> = {
   pot: ["........", "..####..", "########", ".#....#.", ".#....#.", ".#....#.", "..####..", "........"],

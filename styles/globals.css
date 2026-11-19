@@ -21,7 +21,6 @@
   --soft: #f0efea;    /* quiet panels */
   --photo: #e9e8e3;   /* empty photo */
   --danger: #a8281f;
-  --red: #d2232a;      /* the one colour: recipe numbers */
   --font: "Geist", "Helvetica Neue", Arial, sans-serif;
   --font-px: "Geist Pixel", ui-monospace, monospace;
   --pad: clamp(16px, 5vw, 72px);
@@ -472,17 +471,13 @@ textarea.input { padding: 10px 12px; resize: vertical; line-height: 1.5; }
 }
 
 /* =========================================================
-   Label details: recipe numbers, label grid, pixel icons, stamps, dithered photos
+   Label details: label grid, pixel icons, stamps, dithered photos
    ========================================================= */
-.card-no { position: absolute; left: 0; top: 0; background: var(--bg); color: var(--red); font-size: 17px; line-height: 1; padding: 5px 8px 6px 0; -webkit-text-stroke: 0.03em var(--red); }
 
 /* Recipe page: ruled title with the number cell */
 .rp-label { display: grid; grid-template-columns: minmax(0, 1fr) auto; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--ink); }
 .rp-label-main { padding: 14px 16px 16px 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .rp-label-main:only-child { padding-right: 0; }
-.rp-no { border-left: 1px solid var(--ink); padding: 14px 0 14px 16px; display: flex; flex-direction: column; justify-content: space-between; gap: 8px; }
-.rp-no-label { font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.2; }
-.rp-no-num { font-size: clamp(40px, 4vw, 54px); line-height: 1; color: var(--red); -webkit-text-stroke: 0.03em var(--red); }
 .rp-about .rp-by { margin-top: -10px; }
 
 /* The facts as a printed label: black rules, divided cells, pixel icons */
@@ -509,8 +504,6 @@ textarea.input { padding: 10px 12px; resize: vertical; line-height: 1.5; }
 @media (max-width: 640px) {
   .rp-stamp { width: 96px; height: 96px; right: -6px; top: -22px; }
   .home-stamp { width: 84px; height: 84px; }
-  .card-no { font-size: 14px; padding: 4px 6px 5px 0; }
-  .rp-no { padding-left: 12px; }
   .facts-3 > div { padding: 10px 8px; }
 }
 
@@ -519,7 +512,6 @@ textarea.input { padding: 10px 12px; resize: vertical; line-height: 1.5; }
 .rp-stamp { right: -40px; top: -18px; }
 .rp-label { display: block; border-bottom: 1px solid var(--ink); padding: 14px 0 16px; }
 .rp-kicker { margin: 0 0 10px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
-.rp-kicker .rp-no-num { font-size: 30px; line-height: 1; }
 .rp-actions { flex-wrap: nowrap; gap: 18px; }
 .rp-actions .btn-lg { min-height: 46px; padding: 0 20px; }
 .rp-actions .rp-link { white-space: nowrap; }

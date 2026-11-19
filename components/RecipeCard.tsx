@@ -2,7 +2,7 @@ import { memo, useState } from "react";
 import type { Recipe } from "@/lib/types";
 import { formatMinutes, isIncomplete, isYouTube, totalMinutes } from "@/lib/recipe-utils";
 import type { ImportJob } from "@/lib/importer";
-import { Icon, useRecipeNumber, useViewOnly } from "./ui";
+import { Icon, useViewOnly } from "./ui";
 import { RecipeImage } from "./RecipeImage";
 
 /** Same line on every card: who made it, else where it came from. */
@@ -22,13 +22,11 @@ function RecipeCardView({
   const total = totalMinutes(recipe);
   const viewOnly = useViewOnly().on;
   const incomplete = isIncomplete(recipe) && !viewOnly;
-  const no = useRecipeNumber(recipe.id);
   return (
     <article className="card">
       <button className="card-hit" onClick={onOpen} aria-label={`Open ${recipe.name}`}>
         <div className="card-media">
           <RecipeImage recipe={recipe} />
-          {no && <span className="card-no px" aria-label={`Recipe number ${no}`}>{no}</span>}
           {incomplete && (
             <span className="card-incomplete" title="A few details are missing">
               Needs details

@@ -313,7 +313,7 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
         )}
 
         {!loading && (results.length > 0 || jobs.length > 0) && (
-          <Masonry cols={cols} items={gridItems} />
+          <Masonry cols={cols} items={gridItems} resetKey={`${JSON.stringify(filters)}|${sort}`} />
         )}
       </section>
 

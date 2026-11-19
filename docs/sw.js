@@ -19,7 +19,7 @@ function save(item, key = "latest") {
 }
 
 // Offline copy of the app. The build stamps a new version on every deploy.
-const CACHE = "crumb-207b2eb08b";
+const CACHE = "crumb-fa720174f3";
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) =>
@@ -31,20 +31,22 @@ self.addEventListener("activate", (e) =>
   ),
 );
 
-// Page: try the network first (so updates show up), but don't wait more than
-// 3 s on a weak connection; use the saved copy then, or when offline.
+// Page: try the network first (so updates show up). With a saved copy on the
+// phone, wait at most 1.2 s on a weak connection before opening that instead;
+// the new version is saved in the background for next time.
 async function page(request) {
   const cache = await caches.open(CACHE);
   const fresh = fetch(request).then((res) => {
     if (res.ok) cache.put("./", res.clone());
     return res;
   });
-  const timeout = new Promise((r) => setTimeout(r, 3000, null));
+  const saved = await cache.match("./");
+  const timeout = new Promise((r) => setTimeout(r, saved ? 1200 : 8000, null));
   try {
     const res = await Promise.race([fresh, timeout]);
     if (res) return res;
   } catch {}
-  return (await cache.match("./")) || fresh;
+  return saved || fresh;
 }
 
 // Fonts and icons never change name, so the saved copy is always right.

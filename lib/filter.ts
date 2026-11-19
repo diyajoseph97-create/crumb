@@ -42,7 +42,14 @@ function recipeTags(r: Recipe) {
   return [...r.tags, ...r.suggestedTags];
 }
 
+// Built once per recipe version (recipes are replaced, never changed in place).
+const textCache = new WeakMap<Recipe, string>();
 function searchText(r: Recipe) {
+  let t = textCache.get(r);
+  if (t === undefined) textCache.set(r, (t = buildSearchText(r)));
+  return t;
+}
+function buildSearchText(r: Recipe) {
   return [
     r.name,
     ...r.ingredients.map((i) => i.original),

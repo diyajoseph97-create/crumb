@@ -693,3 +693,4 @@ button.coll-chip.on { background: var(--ink); color: var(--paper); }
   .cook-nav .btn { min-width: 0; flex: 1; }
   .detail-top .btn-sm { padding: 0 10px; }
 }
+.masonry-more { height: 1px; }

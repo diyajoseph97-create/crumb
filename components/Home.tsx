@@ -88,7 +88,7 @@ function Inbox({ items, onFill, onOpen }: { items: Recipe[]; onFill: (r: Recipe)
                   <Icon name="external" size={16} />
                 </a>
                 <button className="btn btn-primary btn-sm" onClick={() => onFill(r)}>
-                  Read it
+                  {isYouTube(r.sourceShortcode) || !r.importNotes?.includes("“Add the video”") ? "Read it" : "Add the video"}
                 </button>
               </li>
             );

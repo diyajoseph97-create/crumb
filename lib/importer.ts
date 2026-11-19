@@ -5,6 +5,7 @@ import type { Store } from "./store";
 import { mergeIntoExisting, readRecipe } from "./gemini";
 import { captureFrame } from "./video-frame";
 import { cleanPhoto } from "./trim";
+import { dataUrlToFile, fetchReelPreview, type ReelPreview } from "./reel";
 import { canonicalInstagramUrl, emptyDraft, isYouTube, youtubeCreator, youtubeThumbnail, youtubeVideoId } from "./recipe-utils";
 
 export type ImportInput = {
@@ -42,14 +43,31 @@ export async function runImport(job: ImportInput, deps: { apiKey: string; store:
   const { apiKey, store, existing } = deps;
   const ytUrl = job.code && isYouTube(job.code) ? canonicalInstagramUrl(job.code) : existing && isYouTube(existing.sourceShortcode) ? existing.sourceUrl : null;
 
+  // Instagram with no video: read the Reel's public caption and cover first.
+  const igCode = job.code && !isYouTube(job.code) ? job.code : existing && existing.sourceShortcode && !isYouTube(existing.sourceShortcode) ? existing.sourceShortcode : null;
+  const hasVideo = job.files.some((f) => f.type.startsWith("video/"));
+  let preview: ReelPreview | null = null;
+  if (igCode && !hasVideo) preview = await fetchReelPreview(igCode);
+  const pastedCaption = job.caption.trim() || existing?.originalCaption || "";
+  const caption = pastedCaption || preview?.caption || "";
+  const files = [...job.files];
+  if (preview?.image && !files.some((f) => f.type.startsWith("image/"))) files.push(dataUrlToFile(preview.image, "cover.jpg"));
+
+  // Nothing to read at all: keep the link for later.
+  if (!files.length && !caption && !ytUrl && !existing) return saveLater(job, store, null);
+
   const result = await readRecipe({
     apiKey,
-    files: job.files,
-    text: job.caption.trim() || existing?.originalCaption || "",
+    files,
+    text: caption,
     existing: existing ?? undefined,
     youtubeUrl: ytUrl,
   });
-  if (!result.isRecipe && !existing) throw new NotARecipe("No recipe found in that. Try a video or screenshots that show the ingredients and method.");
+  if (!result.isRecipe && !existing) {
+    // Only the Reel's caption to go on, and it wasn't a recipe: save it to finish with the video.
+    if (igCode && !job.files.length && !job.caption.trim()) return saveLater(job, store, preview);
+    throw new NotARecipe("No recipe found in that. Try a video or screenshots that show the ingredients and method.");
+  }
 
   // Photo: a frame of the finished dish from the video, or the YouTube thumbnail.
   const video = job.files.find((f) => f.type.startsWith("video/"));
@@ -61,23 +79,28 @@ export async function runImport(job: ImportInput, deps: { apiKey: string; store:
   const ytId = youtubeVideoId(ytUrl);
   if (!imageUrl && ytId && !existing?.imageUrl) imageUrl = await youtubeThumbnail(ytId).catch(() => null);
   // Trim the blurred side bars Instagram (and black ones YouTube Shorts) add around tall videos.
+  // Instagram: the Reel's cover.
+  if (!imageUrl && preview?.image && !existing?.imageUrl) imageUrl = await store.uploadImage(preview.image).catch(() => null);
   if (imageUrl) imageUrl = await cleanPhoto(imageUrl);
+  // The account that posted it.
+  if (preview?.creator && !existing?.creator) result.draft.creator = `@${preview.creator.replace(/^@/, "")}`;
   // YouTube says who the channel is; that beats anything read from the video.
   if (ytId && !existing?.creator) {
     const channel = await youtubeCreator(ytId);
     if (channel) result.draft.creator = channel;
   }
 
-  const usedCaption = job.caption.trim() || existing?.originalCaption;
+  const usedCaption = caption;
   const sources = [video || ytUrl ? "video" : "", job.files.some((f) => f.type.startsWith("image/")) ? "screenshots" : "", usedCaption ? "caption" : ""].filter(Boolean);
   const readFrom = sources.length ? `Read from the ${sources.join(", ").replace(/, ([^,]*)$/, " and $1")}.` : "";
   const notes = [result.notes, readFrom].filter(Boolean).join(" ");
 
   if (existing) {
     const patch = mergeIntoExisting(existing, result.draft);
+    if (!result.isRecipe && igCode && !job.files.length) patch.importNotes = LATER_NOTE;
     if (imageUrl) patch.imageUrl = imageUrl;
-    patch.importNotes = notes;
-    if (job.caption.trim() && !existing.originalCaption) patch.originalCaption = job.caption.trim();
+    if (patch.importNotes !== LATER_NOTE) patch.importNotes = notes;
+    if (caption && !existing.originalCaption) patch.originalCaption = caption;
     return store.update(existing.id, patch);
   }
   const draft: RecipeDraft = {
@@ -87,10 +110,31 @@ export async function runImport(job: ImportInput, deps: { apiKey: string; store:
     imageUrl,
     sourceUrl: job.code ? canonicalInstagramUrl(job.code) : null,
     sourceShortcode: job.code,
-    originalCaption: job.caption.trim() || null,
-    importNotes: notes,
+    originalCaption: caption || null,
+    importNotes: notes + (igCode && !hasVideo && !result.draft.steps?.length ? " The steps weren't in the caption: add the video to fill them in." : ""),
   };
   return store.create(draft);
+}
+
+export const LATER_NOTE: string = "The recipe wasn't in the caption. Record or download the Reel, then tap “Add the video” to finish it.";
+const NO_PREVIEW_NOTE = "Saved the link. Record or download the Reel, then tap “Add the video” to finish it.";
+
+/** Keep an Instagram link (with its caption, cover and creator, if we got them) to finish later. */
+export async function saveLater(job: ImportInput, store: Store, preview: ReelPreview | null): Promise<Recipe> {
+  const code = job.code!;
+  const firstLine = preview?.caption?.split("\n").map((l) => l.trim()).find((l) => l && !l.startsWith("#"));
+  let imageUrl: string | null = null;
+  if (preview?.image) imageUrl = await store.uploadImage(preview.image).then(cleanPhoto).catch(() => null);
+  return store.create({
+    ...emptyDraft(),
+    name: firstLine && firstLine.length <= 80 ? firstLine : "Recipe from Instagram",
+    imageUrl,
+    creator: preview?.creator ? `@${preview.creator.replace(/^@/, "")}` : null,
+    sourceUrl: canonicalInstagramUrl(code),
+    sourceShortcode: code,
+    originalCaption: job.caption.trim() || preview?.caption || null,
+    importNotes: preview ? LATER_NOTE : NO_PREVIEW_NOTE,
+  });
 }
 
 // ---------- Saved jobs ----------

@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ImportResult, Recipe } from "@/lib/types";
 import type { Store } from "@/lib/store";
+import { fetchReelPreview } from "@/lib/reel";
+import { saveLater } from "@/lib/importer";
 import { canonicalInstagramUrl, emptyDraft, instagramShortcode, isSavedForLater, isYouTube, SOURCE_LINK } from "@/lib/recipe-utils";
 import type { ImportInput } from "@/lib/importer";
 import { Doodle, Dropdown, Icon, Modal } from "./ui";
@@ -66,7 +68,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
         else if (geminiKey) setAuto("read");
         else setError("To add recipes from videos, add your key in Settings first.");
       } else if (shared.url && instagramShortcode(shared.url)) {
-        setAuto(isYouTube(instagramShortcode(shared.url)) && geminiKey ? "read" : "later");
+        setAuto(geminiKey ? "read" : "later");
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -75,7 +77,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
   // Shared from the phone: start straight away once the form is filled in.
   useEffect(() => {
     if (!auto) return;
-    if (auto === "read" && files.length === 0 && !ytUrl) return;
+    if (auto === "read" && files.length === 0 && !ytUrl && !code) return;
     const run = auto;
     setAuto(null);
     if (run === "read") submit();
@@ -131,6 +133,14 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
     const existing = recipes.find((r) => r.sourceShortcode === code);
     if (existing) return setPhase({ kind: "done", result: { status: "duplicate", recipe: existing } });
     try {
+      if (!isYouTube(code)) {
+        const preview = await fetchReelPreview(code);
+        const recipe = await saveLater({ files: [], caption, code, fillId: null }, store, preview);
+        onSaved(recipe);
+        onClose();
+        notify("Saved for later. Add your key in Settings and crumbs can read the recipe from the caption.");
+        return;
+      }
       const recipe = await store.create({
         ...emptyDraft(),
         name: isYouTube(code) ? "Recipe from YouTube" : "Recipe from Instagram",
@@ -163,9 +173,10 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
         return;
       }
     }
-    // Just an Instagram link (nothing to read yet), or no key: keep the link for later.
-    if (code && !fillRecipe && (!hasMaterial || !geminiKey)) return saveForLater();
-    if (!hasMaterial) {
+    // No key: keep the link for later. (With a key, an Instagram link alone is enough:
+    // crumbs reads the Reel's caption, and saves it for later if the recipe isn't there.)
+    if (code && !fillRecipe && !geminiKey) return saveForLater();
+    if (!hasMaterial && !code) {
       setError("Paste a link, or add the downloaded video or screenshots.");
       return;
     }
@@ -229,7 +240,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
                 <span className="add-step-icon" aria-hidden="true"><Icon name="link" size={18} /></span>
                 <label className="add-step-body link-field">
                   <span className="add-step-title">Paste the link</span>
-                  <span className="add-step-hint">From Instagram or YouTube. For YouTube, that's all you need.</span>
+                  <span className="add-step-hint">From Instagram or YouTube. Often that's all you need: crumbs reads the caption or the video.</span>
                   <span className={`link-input ${url && !code ? "bad" : ""}`}>
                     <input type="url" inputMode="url" value={url} onChange={(e) => setUrl(e.target.value.trim())} placeholder="https://www.instagram.com/reel/…" aria-label="Recipe link" />
                     {code && <Icon name="check" size={16} className="link-ok" />}
@@ -243,8 +254,8 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
               <div className="add-step">
                 <span className="add-step-icon" aria-hidden="true"><Icon name="play" size={18} /></span>
                 <div className="add-step-body">
-                  <span className="add-step-title">Add the video <span className="add-opt">{fillRecipe ? "or screenshots" : "Instagram only"}</span></span>
-                  <span className="add-step-hint">{fillRecipe ? "A recording or screenshots of the recipe." : "Download the Reel and add it here, so crumbs can watch it. You can also add it later."}</span>
+                  <span className="add-step-title">Add the video <span className="add-opt">{fillRecipe ? "or screenshots" : "if needed"}</span></span>
+                  <span className="add-step-hint">{fillRecipe ? "A recording or screenshots of the recipe." : "Only if the recipe isn't in the caption. A screen recording works, and you can add it later."}</span>
                 {!video && (
                   <button type="button" className={`dropzone big ${dragging ? "over" : ""}`} onClick={() => fileRef.current?.click()}>
                     <Icon name="upload" size={22} />

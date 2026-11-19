@@ -115,7 +115,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
     setPendingShare(null);
     const code = share.url ? instagramShortcode(share.url) : null;
     const waiting = recipes.some(isSavedForLater);
-    const canReadNow = Boolean(geminiKey) && ((share.files.length > 0 && (code || !waiting)) || (share.files.length === 0 && isYouTube(code)));
+    const canReadNow = Boolean(geminiKey) && ((share.files.length > 0 && (code || !waiting)) || (share.files.length === 0 && Boolean(code)));
     if (canReadNow) {
       const dup = code ? recipes.find((r) => r.sourceShortcode === code) : undefined;
       if (dup) return toast("Looks like you've already saved this one.", { label: "Open saved recipe", run: () => go(`recipe-${dup.id}`) });
@@ -221,7 +221,8 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
         setJobs((js) => js.filter((j) => j.id !== job.id));
         forgetJob(job.id);
         upsert(recipe);
-        toast(existing ? `“${recipe.name}” is all filled in!` : "One more recipe safely tucked away!", { label: "View recipe", run: () => go(`recipe-${recipe.id}`) });
+        if (isSavedForLater(recipe)) toast(recipe.originalCaption ? "Saved for later. The caption didn't have the recipe, so add the video when you can." : "Saved for later. Add the video when you can.", { label: "Add the video", run: () => setAdd({ open: true, fill: recipe, shared: null }) });
+        else toast(existing ? `“${recipe.name}” is all filled in!` : "One more recipe safely tucked away!", { label: "View recipe", run: () => go(`recipe-${recipe.id}`) });
       } catch (e) {
         const message = e instanceof Error ? e.message : "Something went wrong.";
         setJobs((js) => js.map((j) => (j.id === job.id ? { ...j, status: "failed", error: message } : j)));
@@ -246,7 +247,8 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
 
   /** "Read it" / "Fill in": YouTube needs nothing more, so start right away; otherwise ask for the video. */
   const fillFrom = (r: Recipe) => {
-    if (geminiKey && isYouTube(r.sourceShortcode)) {
+    // YouTube, or an Instagram Reel whose caption hasn't been tried yet: read it now.
+    if (geminiKey && (isYouTube(r.sourceShortcode) || (r.sourceShortcode && !r.importNotes?.includes("“Add the video”")))) {
       queue({ files: [], caption: "", code: null, fillId: r.id });
       toast(`Reading “${r.name}” in the background…`);
     } else setAdd({ open: true, fill: r, shared: null });

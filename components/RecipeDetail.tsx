@@ -84,6 +84,8 @@ const est = (flag: boolean | undefined, v: number | null) => (flag && v != null 
 
 export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite, onAddScreenshots, onSetLink, fillJob, onRetryFill, hasKey, ensureTips, onShare, onSetPhoto, onUpdate, allCollections = [] }: Props) {
   const view = useViewOnly();
+  const [addingColl, setAddingColl] = useState(false);
+  const canEditColl = !view.on && !!onUpdate;
   const [tipsState, setTipsState] = useState<"idle" | "loading" | "failed">("idle");
   useEffect(() => {
     if (!ensureTips || r.healthTips?.length || !hasKey || r.ingredients.length === 0) return;
@@ -234,19 +236,20 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
 
           <div className="rp-actions">
             <button className="btn btn-primary btn-lg" onClick={() => setCooking(true)}>Start cooking</button>
-            <button className="rp-link u" onClick={toggleList} aria-pressed={onList}>{onList ? "On your list ✓" : "Add to list"}</button>
-            <Collections value={r.collections ?? []} all={allCollections} onChange={!view.on && onUpdate ? (c) => onUpdate({ collections: c }) : undefined} />
-            {!view.on && (
-              <OverflowMenu
-                label="More actions for this recipe"
-                items={[
+            {addingColl && canEditColl && <Collections value={r.collections ?? []} all={allCollections} onChange={(c) => onUpdate!({ collections: c })} onDone={() => setAddingColl(false)} />}
+            <OverflowMenu
+              label="More actions for this recipe"
+              items={[
+                { label: onList ? "Remove from shopping list" : "Add to shopping list", onSelect: toggleList, pressed: onList },
+                ...(canEditColl ? [{ label: "Add to collection", onSelect: () => setAddingColl(true) }] : []),
+                ...(!view.on ? [
                   { label: r.favourite ? "Remove from favourites" : "Add to favourites", onSelect: onFavourite, pressed: r.favourite },
                   ...(onShare ? [{ label: "Share a view-only link", onSelect: onShare }] : []),
                   { label: "Edit recipe", onSelect: onEdit },
                   { label: "Delete recipe", onSelect: () => setConfirm(true), danger: true },
-                ]}
-              />
-            )}
+                ] : []),
+              ]}
+            />
           </div>
           <CollectionChips value={r.collections ?? []} onChange={!view.on && onUpdate ? (c) => onUpdate({ collections: c }) : undefined} />
 
@@ -377,24 +380,19 @@ function MyNotes({ value, onSave }: { value: string; onSave: (t: string) => void
   );
 }
 
-/** "Add to collection": a link like "Add to list" that turns into a name box. */
-function Collections({ value, all, onChange }: { value: string[]; all: string[]; onChange?: (c: string[]) => void }) {
-  const [adding, setAdding] = useState(false);
+/** "Add to collection" (chosen from the ⋯ menu): a name box in the action row. */
+function Collections({ value, all, onChange, onDone }: { value: string[]; all: string[]; onChange: (c: string[]) => void; onDone: () => void }) {
   const [name, setName] = useState("");
-  if (!onChange) return null;
   const add = () => {
     const n = name.trim();
     if (n && !value.includes(n)) onChange([...value, n]);
-    setName("");
-    setAdding(false);
+    onDone();
   };
-  return adding ? (
+  return (
     <form className="coll-add" onSubmit={(e) => { e.preventDefault(); add(); }}>
-      <input autoFocus list="coll-list" value={name} onChange={(e) => setName((e.target as HTMLInputElement).value)} onBlur={add} placeholder="e.g. Weeknight" aria-label="Collection name" maxLength={40} />
+      <input autoFocus list="coll-list" value={name} onChange={(e) => setName((e.target as HTMLInputElement).value)} onBlur={add} onKeyDown={(e) => { if (e.key === "Escape") onDone(); }} placeholder="Collection name" aria-label="Collection name" maxLength={40} />
       <datalist id="coll-list">{all.filter((c) => !value.includes(c)).map((c) => <option key={c} value={c} />)}</datalist>
     </form>
-  ) : (
-    <button className="rp-link u coll-new" onClick={() => setAdding(true)}>Add to collection</button>
   );
 }
 

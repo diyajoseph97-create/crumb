@@ -646,7 +646,7 @@ b, strong { font-weight: 500; } /* only 400 and 500 are loaded; no fake bold */
 .dd-field .dd-list { left: 0; right: 0; }
 /* Meal row: the same space above and below */
 .search { margin-bottom: 0; }
-.quick-cats { padding: 24px 0; }
+.quick-cats { padding: 6px 0; }
 .coll-row { padding: 16px 0; }
 .menu-list.up { top: auto; bottom: calc(100% + 6px); }
 .rp-about .rp-by { margin: -8px 0; }

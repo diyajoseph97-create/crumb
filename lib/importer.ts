@@ -5,6 +5,7 @@ import type { Store } from "./store";
 import { mergeIntoExisting, readRecipe } from "./gemini";
 import { captureFrame } from "./video-frame";
 import { cleanPhoto } from "./trim";
+import { compactPhoto } from "./image";
 import { dataUrlToFile, fetchReelPreview, PreviewUnavailable, type ReelPreview } from "./reel";
 import { canonicalInstagramUrl, emptyDraft, isYouTube, youtubeCreator, youtubeThumbnail, youtubeVideoId } from "./recipe-utils";
 
@@ -100,7 +101,7 @@ export async function runImport(job: ImportInput, deps: { apiKey: string; store:
   if (!imageUrl && ytId && !existing?.imageUrl) imageUrl = await youtubeThumbnail(ytId).catch(() => null);
   // Trim the blurred side bars Instagram (and black ones YouTube Shorts) add around tall videos.
   // Instagram: the Reel's cover.
-  if (!imageUrl && preview?.image && !existing?.imageUrl) imageUrl = await store.uploadImage(preview.image).catch(() => null);
+  if (!imageUrl && preview?.image && !existing?.imageUrl) imageUrl = await store.uploadImage((await compactPhoto(preview.image).catch(() => null)) || preview.image).catch(() => null);
   if (imageUrl) imageUrl = await cleanPhoto(imageUrl);
   // The account that posted it.
   if (preview?.creator && !existing?.creator) result.draft.creator = `@${preview.creator.replace(/^@/, "")}`;
@@ -147,7 +148,7 @@ export async function saveLater(job: ImportInput, store: Store, preview: ReelPre
   const code = preview?.code || job.code!;
   const firstLine = preview?.caption?.split("\n").map((l) => l.trim()).find((l) => l && !l.startsWith("#"));
   let imageUrl: string | null = null;
-  if (preview?.image) imageUrl = await store.uploadImage(preview.image).then(cleanPhoto).catch(() => null);
+  if (preview?.image) imageUrl = await store.uploadImage((await compactPhoto(preview.image).catch(() => null)) || preview.image).then(cleanPhoto).catch(() => null);
   return store.create({
     ...emptyDraft(),
     name: firstLine && firstLine.length <= 80 ? firstLine : "Recipe from Instagram",

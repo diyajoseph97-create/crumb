@@ -2,7 +2,7 @@
 // blurred, darkened copy of the same video. Those bars end in a straight vertical
 // line where the real picture starts, which ordinary food photos never have.
 // We look for that line on both sides and crop the bars off.
-import { encodePhoto } from "./image";
+import { canDecodeOffThread, decodeOffThread, encodeOffThread, encodePhoto } from "./image";
 
 function load(src: string): Promise<HTMLImageElement> {
   return new Promise((res, rej) => {
@@ -44,6 +44,7 @@ export function findSideBars(gray: Float32Array, w: number, h: number): [number,
 
 /** A copy of the photo with Instagram's blurred side bars cropped off, or null if it has none. */
 export async function trimSideBars(src: string): Promise<string | null> {
+  if (canDecodeOffThread()) return trimOffThread(src);
   const img = await load(src);
   const W = img.naturalWidth, H = img.naturalHeight;
   if (!W || !H) return null;
@@ -63,6 +64,29 @@ export async function trimSideBars(src: string): Promise<string | null> {
   out.width = x1 - x0; out.height = H;
   out.getContext("2d")!.drawImage(img, x0, 0, x1 - x0, H, 0, 0, x1 - x0, H);
   return encodePhoto(out, 0.85);
+}
+
+/** The same, with the photo decoded and shrunk in the background (no freeze on phones). */
+async function trimOffThread(src: string): Promise<string | null> {
+  const small = await decodeOffThread(src, 240);
+  const w = small.width, h = small.height;
+  const c = new OffscreenCanvas(w, h);
+  const ctx = c.getContext("2d", { willReadFrequently: true })!;
+  ctx.drawImage(small, 0, 0);
+  small.close();
+  const px = ctx.getImageData(0, 0, w, h).data;
+  const gray = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) gray[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
+  const bars = findSideBars(gray, w, h);
+  if (!bars) return null;
+  const full = await decodeOffThread(src);
+  try {
+    const W = full.width;
+    const x0 = Math.round((bars[0] + 0.006) * W), x1 = Math.round((bars[1] - 0.006) * W);
+    return await encodeOffThread(full, 0.85, { x: x0, w: x1 - x0 }, Infinity);
+  } finally {
+    full.close();
+  }
 }
 
 /** Same as trimSideBars, but never throws: returns the original if nothing to do. */

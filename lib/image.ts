@@ -39,11 +39,48 @@ export async function resizeImage(file: File, maxSide = PHOTO_MAX, quality = 0.8
   }
 }
 
+// ---------- Off the main thread ----------
+// createImageBitmap decodes (and shrinks) in the background, and OffscreenCanvas
+// encodes in the background, so background photo work never freezes the page.
+export const canDecodeOffThread = () => typeof createImageBitmap === "function" && typeof OffscreenCanvas === "function";
+
+/** Decode a photo in the background, optionally shrunk to `width` (keeping its shape). */
+export async function decodeOffThread(src: string, width?: number): Promise<ImageBitmap> {
+  const blob = await (await fetch(src)).blob();
+  if (!width) return createImageBitmap(blob);
+  const probe = await createImageBitmap(blob);
+  const w = Math.min(width, probe.width), h = Math.max(1, Math.round((probe.height * w) / probe.width));
+  probe.close();
+  return createImageBitmap(blob, { resizeWidth: w, resizeHeight: h, resizeQuality: "high" });
+}
+
+/** Encode a bitmap (or part of it) as a WebP/JPEG data: URL, in the background. */
+export async function encodeOffThread(bmp: ImageBitmap, quality = 0.8, crop?: { x: number; w: number }, maxSide = PHOTO_MAX): Promise<string> {
+  const sx = crop?.x ?? 0, sw = crop?.w ?? bmp.width, sh = bmp.height;
+  const scale = Math.min(1, maxSide / Math.max(sw, sh));
+  const c = new OffscreenCanvas(Math.round(sw * scale), Math.round(sh * scale));
+  c.getContext("2d")!.drawImage(bmp, sx, 0, sw, sh, 0, 0, c.width, c.height);
+  let blob = await c.convertToBlob({ type: "image/webp", quality });
+  if (blob.type !== "image/webp") blob = await c.convertToBlob({ type: "image/jpeg", quality });
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(blob);
+  });
+}
+
 /** Re-encode a stored photo smaller, if that saves a meaningful amount. Returns null if not worth it. */
 export async function compactPhoto(dataUrl: string): Promise<string | null> {
   if (!dataUrl.startsWith("data:image/")) return null;
-  const img = await loadImage(dataUrl);
-  const smaller = encodePhoto(draw(img, img.naturalWidth, img.naturalHeight, PHOTO_MAX));
+  let smaller: string;
+  if (canDecodeOffThread()) {
+    const bmp = await decodeOffThread(dataUrl);
+    try { smaller = await encodeOffThread(bmp, 0.8); } finally { bmp.close(); }
+  } else {
+    const img = await loadImage(dataUrl);
+    smaller = encodePhoto(draw(img, img.naturalWidth, img.naturalHeight, PHOTO_MAX));
+  }
   return smaller.length < dataUrl.length * 0.8 ? smaller : null;
 }
 

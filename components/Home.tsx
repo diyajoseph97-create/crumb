@@ -123,6 +123,14 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
   const quickMeal = filters.meals.length === 1 && (QUICK_MEALS as readonly string[]).includes(filters.meals[0]);
   const sheetCount = (filters.untried ? 1 : 0) + filters.include.length + filters.exclude.length + filters.times.length + filters.cuisines.length + filters.tags.length + (quickMeal ? 0 : filters.meals.length);
   const set = (patch: Partial<Filters>) => setFilters({ ...filters, ...patch });
+  // Search as you type, but only once typing pauses, so the grid isn't rebuilt on every letter.
+  const [q, setQ] = useState(filters.query);
+  useEffect(() => { if (filters.query !== q && document.activeElement?.getAttribute("aria-label") !== "Search recipes") setQ(filters.query); }, [filters.query]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (q === filters.query) return;
+    const t = setTimeout(() => setFilters({ ...filters, query: q }), q ? 140 : 0);
+    return () => clearTimeout(t);
+  }, [q]); // eslint-disable-line react-hooks/exhaustive-deps
   const clearAll = () => setFilters({ ...EMPTY_FILTERS, query: filters.query });
 
   // Recipes still being added come first, then the cookbook (one list, in reading order).
@@ -152,13 +160,13 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
           <Icon name="search" size={20} className="search-icon" />
           <input
             type="search"
-            value={filters.query}
-            onChange={(e) => set({ query: e.target.value })}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
             placeholder="Search paneer, quick dinner…"
             aria-label="Search recipes"
           />
-          {filters.query && (
-            <button className="search-clear" onClick={() => set({ query: "" })} aria-label="Clear search"><Icon name="x" size={18} /></button>
+          {q && (
+            <button className="search-clear" onClick={() => { setQ(""); set({ query: "" }); }} aria-label="Clear search"><Icon name="x" size={18} /></button>
           )}
         </label>
 

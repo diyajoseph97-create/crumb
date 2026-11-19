@@ -545,3 +545,74 @@ textarea.input { padding: 10px 12px; resize: vertical; line-height: 1.5; }
   .rp-about > .rp-photo { width: 100%; height: 280px; }
   .rp-stamp { right: -4px; top: -22px; }
 }
+
+/* =========================================================
+   Uniform type, colour and spacing (one scale, used everywhere)
+   Sans: 13 small · 15 body · 17 large value     Caps: 11.5 / 0.07em
+   Pixel: 20 · 28 · 36 · 56 (+ display titles)   Space: 8 · 16 · 24 · 32 · 48
+   ========================================================= */
+:root { --caps: 11.5px; --caps-ls: 0.07em; --small: 13px; --body: 15px; --large: 17px; }
+b, strong { font-weight: 500; } /* only 400 and 500 are loaded; no fake bold */
+
+/* Capitals: one size and spacing everywhere */
+.label, .result-count, .fgroup-title, .rp-viewonly, .unscaled, .card-incomplete, .nav-link, .nav-note, .add-btn,
+.quick-cat, .sort, .settings-tab, .cook-step-no, .rp-no-label { font-size: var(--caps); letter-spacing: var(--caps-ls); }
+.card-incomplete { font-size: 10.5px; }
+
+/* Small text */
+.card-by, .card-sub, .hint, .muted.small, .small, .home-intro.small, .units, .suggest, .tchip, .seg button, .coll-chip,
+.coll-add input, .share-url, .shop-recipe-name, .form-note, .form-error, .form-ok, .help-list, .rp-link.small { font-size: var(--small); }
+.card-by { color: var(--ink); }
+.card-sub { color: var(--ink-2); }
+
+/* Body text */
+.home-intro, .rp-bar, .rp-link, .rp-by, .ing-list li, .step-text, .rp-block p, .tips, .my-notes-input, .serves,
+.shop-items .cook-ing, .cook-sub, .search input, .input, .smart-input, .link-input input, .mini-search input, .notice p,
+.settings-section p, .settings-intro, .toast, .link-btn, .btn { font-size: var(--body); }
+.btn-sm { font-size: 14px; }
+.search input { font-size: clamp(17px, 1.6vw, 20px); }
+.facts dd, .serves-val { font-size: var(--large); }
+.facts .facts-small { font-size: 14px; }
+
+/* Pixel headings: four steps */
+.rp-h3, .settings-h, .notice-title, .inbox-title, .step-no, .step-num.sm, .ed-title { font-size: 20px; }
+.rp-h, .h-sm, .sheet-head .h-display { font-size: 28px; }
+.h-md, .settings > .h-display, .add-head .h-display, .editor-top .h-display, .setup-card h1, .result .h-display,
+.empty .h-display, .cook-h { font-size: 36px; line-height: 1.05; }
+.rp-title { font-size: clamp(40px, 4.4vw, 56px); }
+.card-title { font-size: clamp(17px, 1.7vw, 22px); }
+
+/* Spacing on an 8 px rhythm */
+.rp-grid { padding-top: 48px; gap: 48px 64px; }
+.rp-about { gap: 24px; }
+.rp-make { gap: 48px; }
+.rp-section { gap: 16px; }
+.step-list { padding-top: 24px; gap: 24px; }
+.rp-actions { gap: 16px; }
+.rp-bar { padding: 16px 0; }
+.rp-bar-links { gap: 24px; }
+.facts-row > div { padding: 12px 16px; }
+.facts-row:not(.facts-3) > div, .facts-3 > div:first-child { padding-left: 0; }
+.ing-list li { padding: 12px 0; }
+.quick-cats { gap: 8px 24px; padding-bottom: 24px; }
+.coll-row { gap: 8px 24px; padding: 16px 0; }
+.browse-bar { padding: 24px 0; }
+.card-body { padding-top: 12px; gap: 4px; }
+.settings-tabs { gap: 8px 24px; margin: 16px 0 8px; }
+.settings-section { padding: 16px 0; }
+.home-top { padding: clamp(40px, 6vw, 80px) 0 32px; }
+.search { margin-bottom: 16px; }
+.cook-sub { margin-bottom: 24px; }
+@media (max-width: 640px) {
+  .rp-grid { padding-top: 24px; gap: 40px; }
+  .rp-make { gap: 40px; }
+  .home-top { padding: 32px 0 16px; }
+  .quick-cats { gap: 8px 16px; }
+  .h-md, .settings > .h-display, .add-head .h-display, .editor-top .h-display, .setup-card h1, .result .h-display, .empty .h-display, .cook-h { font-size: 32px; }
+  .rp-title { font-size: 40px; }
+  .card-title { font-size: 17px; }
+}
+.btn.add-btn { font-size: var(--caps); }
+.canon, .canon input, .sugg-mark, .setup-card .muted, .setup-card p { font-size: var(--small); }
+.setup-card > p.muted { font-size: var(--body); }
+@media (max-width: 640px) { .btn.add-btn { font-size: 20px; } }

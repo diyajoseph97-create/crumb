@@ -48,7 +48,7 @@ function ReelLink({ url, onSetLink }: { url: string | null; onSetLink: (url: str
   if (url) {
     return (
       <a className="reel-link" href={url} target="_blank" rel="noopener noreferrer">
-        {isYouTube(url) ? "Watch on YouTube" : "Watch the original Reel"} ↗
+        Watch ↗
       </a>
     );
   }
@@ -125,7 +125,9 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
   const n = r.nutrition;
   const hasNutrition = n && Object.values(n).some((v) => v != null);
   const stepServings = (d: number) => setServings((s) => Math.max(1, Math.min(50, s + d)));
-  const categories = r.cuisines.length > 1 ? r.cuisines.filter((c) => c !== "Indian") : r.cuisines;
+  const cuisines = r.cuisines.length > 1 ? r.cuisines.filter((c) => c !== "Indian") : r.cuisines;
+  // The cuisine; if there isn't one, the meal (e.g. "Desserts").
+  const categories = cuisines.length ? cuisines : r.meals.slice(0, 1);
   const cooked = r.cookedCount ?? 0;
   const stampText = r.tags.length ? r.tags.slice(0, 3).join(" · ") : r.cuisines.filter((c) => c !== "Indian")[0] ?? r.cuisines[0] ?? "";
 
@@ -194,7 +196,7 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
             <h1 className="rp-title px">{r.name || "Untitled recipe"}</h1>
           </div>
           <p className="rp-by">
-            {r.creator && <>By <span className="rp-creator">{r.creator.startsWith("@") || r.creator.includes(" ") ? r.creator : `@${r.creator}`}</span>{r.sourceUrl ? " · " : ""}</>}
+            {r.creator && <><span className="rp-creator">{r.creator.startsWith("@") || r.creator.includes(" ") ? r.creator : `@${r.creator}`}</span>{r.sourceUrl ? " · " : ""}</>}
             <ReelLink url={r.sourceUrl} onSetLink={onSetLink} />
           </p>
 

@@ -7,7 +7,7 @@ import { RecipeImage } from "./RecipeImage";
 
 /** Same line on every card: who made it, else where it came from. */
 function byLine(r: Recipe) {
-  if (r.creator) return `by ${r.creator.startsWith("@") || r.creator.includes(" ") ? r.creator : `@${r.creator}`}`;
+  if (r.creator) return r.creator.startsWith("@") || r.creator.includes(" ") ? r.creator : `@${r.creator}`;
   if (isYouTube(r.sourceShortcode || r.sourceUrl)) return "from YouTube";
   if (r.sourceUrl) return "from Instagram";
   return "added by you";

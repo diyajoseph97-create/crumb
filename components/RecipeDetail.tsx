@@ -176,7 +176,11 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
         <aside className="rp-about">
           <div className={`rp-photo ${r.imageUrl ? "" : "no-photo"}`}>
             <RecipeImage recipe={r} variant="hero" />
-            {stampText && <Stamp text={stampText} size={104} className="rp-stamp" icon={dietIcon(r.tags[0])} />}
+            {!view.on && (
+              <button className={`fav-btn rp-fav ${r.favourite ? "on" : ""}`} onClick={onFavourite} aria-pressed={r.favourite} aria-label={r.favourite ? "Remove from favourites" : "Add to favourites"} title={r.favourite ? "Remove from favourites" : "Add to favourites"}>
+                <Icon name="heart" size={18} filled={r.favourite} />
+              </button>
+            )}
             {!r.imageUrl && onSetPhoto && !view.on && (
               <label className="btn btn-outline btn-sm add-photo">
                 Add a photo
@@ -187,7 +191,8 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
               </label>
             )}
           </div>
-          <div className="rp-label">
+          <div className={`rp-label ${stampText ? "has-stamp" : ""}`}>
+            {stampText && <Stamp text={stampText} size={96} className="rp-stamp" icon={dietIcon(r.tags[0])} />}
             {categories.length > 0 && <p className="rp-kicker label">{categories.join(" · ")}</p>}
             <h1 className="rp-title px">{r.name || "Untitled recipe"}</h1>
           </div>
@@ -196,19 +201,18 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
               {r.creator && <><span className="rp-creator">{r.creator.startsWith("@") || r.creator.includes(" ") ? r.creator : `@${r.creator}`}</span>{r.sourceUrl ? " · " : ""}</>}
               <ReelLink url={r.sourceUrl} onSetLink={onSetLink} />
             </p>
-            <OverflowMenu
-              label="More actions for this recipe"
-              items={[
-                { label: onList ? "Remove from shopping list" : "Add to shopping list", onSelect: toggleList, pressed: onList },
-                ...(canEditColl ? [{ label: "Add to collection", onSelect: () => setAddingColl(true) }] : []),
-                ...(!view.on ? [
-                  { label: r.favourite ? "Remove from favourites" : "Add to favourites", onSelect: onFavourite, pressed: r.favourite },
-                  ...(onShare ? [{ label: "Share a view-only link", onSelect: onShare }] : []),
-                  { label: "Edit recipe", onSelect: onEdit },
-                  { label: "Delete recipe", onSelect: () => setConfirm(true), danger: true },
-                ] : []),
-              ]}
-            />
+            <div className="rp-tools">
+              {!view.on && onShare && <button className="icon-btn" onClick={onShare} aria-label="Share a view-only link" title="Share a view-only link"><Icon name="share" size={19} /></button>}
+              {!view.on && <button className="icon-btn" onClick={onEdit} aria-label="Edit recipe" title="Edit recipe"><Icon name="edit" size={19} /></button>}
+              {!view.on && <button className="icon-btn danger" onClick={() => setConfirm(true)} aria-label="Delete recipe" title="Delete recipe"><Icon name="trash" size={19} /></button>}
+              <OverflowMenu
+                label="More actions for this recipe"
+                items={[
+                  { label: onList ? "Remove from shopping list" : "Add to shopping list", onSelect: toggleList, pressed: onList },
+                  ...(canEditColl ? [{ label: "Add to collection", onSelect: () => setAddingColl(true) }] : []),
+                ]}
+              />
+            </div>
           </div>
 
           <dl className="facts">

@@ -16,7 +16,7 @@ import { onRemoteChanges, onSyncStatus, getSyncStatus, type SyncStatus } from "@
 import { forgetJob, newJob, runImport, saveJob, savedJobs, type ImportInput, type ImportJob } from "@/lib/importer";
 import { isSavedForLater, isYouTube, youtubeCreator, youtubeVideoId } from "@/lib/recipe-utils";
 import { cleanPhoto } from "@/lib/trim";
-import { Doodle, Modal, ViewOnlyContext } from "./ui";
+import { Doodle, Icon, Modal, ViewOnlyContext } from "./ui";
 
 // Simple page routing using the part of the URL after "#":
 //   (none)        library
@@ -410,7 +410,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
       />
     );
   } else if (route.page === "new") {
-    body = <RecipeEditor key="new" title="New recipe" initial={emptyDraft()} onCancel={() => history.back()} onSave={(d) => saveEdit(null, d)} uploadImage={store.uploadImage} />;
+    body = <RecipeEditor key="new" title="New recipe" initial={emptyDraft()} onCancel={() => history.back()} onSave={(d) => saveEdit(null, d)} uploadImage={store.uploadImage} apiKey={geminiKey ?? undefined} />;
   } else if (!current) {
     body = loading ? (
       <p className="muted pad">Loading…</p>
@@ -424,7 +424,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
     );
   } else if (route.page === "edit") {
     const { id, createdAt, updatedAt, ...draft } = current;
-    body = <RecipeEditor key={id} title="Edit recipe" initial={draft} onCancel={() => go(`recipe-${id}`)} onSave={(d) => saveEdit(id, d)} uploadImage={store.uploadImage} />;
+    body = <RecipeEditor key={id} title="Edit recipe" initial={draft} onCancel={() => go(`recipe-${id}`)} onSave={(d) => saveEdit(id, d)} uploadImage={store.uploadImage} apiKey={geminiKey ?? undefined} />;
   } else {
     body = (
       <RecipeDetail
@@ -468,29 +468,36 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
     <ViewOnlyContext.Provider value={{ on: Boolean(viewOnly), singleRecipe: viewOnly?.singleRecipe }}>
     <div className="app">
       <header className="topbar">
-        <button className="wordmark px" onClick={() => !viewOnly?.singleRecipe && go("")} aria-label="Cookbook home">
-          {viewOnly ? viewOnly.title : "crumbs"}
-        </button>
+        {route.page === "home" || viewOnly?.singleRecipe ? (
+          <span className="wordmark px static">{viewOnly ? viewOnly.title : "crumbs"}</span>
+        ) : (
+          <button className="wordmark px" onClick={() => go("")} aria-label="Back to all recipes">
+            {viewOnly ? viewOnly.title : "crumbs"}
+          </button>
+        )}
         <nav className="topnav" aria-label="Cookbook">
           {viewOnly && <span className="nav-note">Shared with you · view only</span>}
           {!viewOnly && (
             <button
-              className={`nav-link fav-link ${filters.favourites ? "on" : ""}`}
+              className={`nav-icon fav-link ${filters.favourites ? "on" : ""}`}
               aria-pressed={filters.favourites}
+              aria-label="Favourites"
+              title="Favourites"
               onClick={() => {
                 setFilters({ ...filters, favourites: !filters.favourites });
                 go("");
               }}
             >
-              Favourites
+              <Icon name="heart" size={22} filled={filters.favourites} />
             </button>
           )}
-          <button className="nav-link list-link" onClick={() => setShopOpen(true)} aria-label={`Shopping list${shopCount ? `, ${shopCount} recipes` : ""}`}>
-            List{shopCount ? ` (${shopCount})` : ""}
+          <button className="nav-icon list-link" onClick={() => setShopOpen(true)} aria-label={`Shopping list${shopCount ? `, ${shopCount} recipes` : ""}`} title="Shopping list">
+            <Icon name="cart" size={22} />
+            {shopCount > 0 && <span className="nav-count" aria-hidden="true">{shopCount}</span>}
           </button>
           {!viewOnly && (
-            <button className="nav-link settings-link" onClick={() => setSettingsOpen(true)} aria-label="Settings">
-              Settings
+            <button className="nav-icon settings-link" onClick={() => setSettingsOpen(true)} aria-label="Settings" title="Settings">
+              <Icon name="gear" size={22} />
               {sync.state === "paused" && <span className="sync-dot" title="Sync paused" aria-label="Sync paused" />}
             </button>
           )}

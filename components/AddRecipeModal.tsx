@@ -38,7 +38,6 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
   const [caption, setCaption] = useState("");
   const [phase, setPhase] = useState<Phase>({ kind: "form" });
   const [error, setError] = useState<string | null>(null);
-  const [help, setHelp] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -226,74 +225,77 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
             )}
 
             {!fillRecipe && (
-              <label className="field link-field">
-                <span className="field-label">
-                  Recipe link
-                </span>
-                <span className={`link-input ${url && !code ? "bad" : ""}`}>
-                  <Icon name="link" size={16} />
-                  <input type="url" inputMode="url" value={url} onChange={(e) => setUrl(e.target.value.trim())} placeholder="Paste an Instagram or YouTube link..." />
-                  {code && <Icon name="check" size={16} className="link-ok" />}
-                </span>
-                {url && !code && <span className="hint bad">That doesn't look like an Instagram Reel or YouTube link.</span>}
-              </label>
-            )}
-
-            {!video && !ytUrl && (
-              <button type="button" className={`dropzone big ${dragging ? "over" : ""}`} onClick={() => fileRef.current?.click()}>
-                <Icon name="play" size={30} />
-                <strong>Drop the downloaded Reel here</strong>
-                <span className="muted small">or click to choose it · screenshots work too</span>
-              </button>
-            )}
-            {files.length > 0 && (
-              <div className="shots">
-                {video && (
-                  <div className="shot shot-video wide">
-                    <Icon name="play" size={22} />
-                    <span className="shot-name">{video.file.name}</span>
-                    <span>{(video.file.size / 1024 / 1024).toFixed(1)} MB</span>
-                    <button type="button" className="shot-x" aria-label="Remove video" onClick={() => setFiles((x) => x.filter((f) => f !== video))}>
-                      <Icon name="x" size={12} />
-                    </button>
-                  </div>
-                )}
-                {images.map((f, i) => (
-                  <div key={i} className="shot">
-                    <img src={f.preview!} alt={`Screenshot ${i + 1}`} />
-                    <button type="button" className="shot-x" aria-label="Remove screenshot" onClick={() => setFiles((x) => x.filter((y) => y !== f))}>
-                      <Icon name="x" size={12} />
-                    </button>
-                  </div>
-                ))}
-                <button type="button" className="shot shot-add" onClick={() => fileRef.current?.click()} aria-label="Add more"><Icon name="plus" /></button>
+              <div className="add-step">
+                <span className="add-step-icon" aria-hidden="true"><Icon name="link" size={18} /></span>
+                <label className="add-step-body link-field">
+                  <span className="add-step-title">Paste the link</span>
+                  <span className="add-step-hint">From Instagram or YouTube. For YouTube, that's all you need.</span>
+                  <span className={`link-input ${url && !code ? "bad" : ""}`}>
+                    <input type="url" inputMode="url" value={url} onChange={(e) => setUrl(e.target.value.trim())} placeholder="https://www.instagram.com/reel/…" aria-label="Recipe link" />
+                    {code && <Icon name="check" size={16} className="link-ok" />}
+                  </span>
+                  {url && !code && <span className="hint bad">That doesn't look like an Instagram Reel or YouTube link.</span>}
+                </label>
               </div>
             )}
 
-            <div className="smartzone">
-              <textarea
-                className="smart-input"
-                rows={3}
-                value={caption}
-                onChange={(e) => onSmartText(e.target.value)}
-                onPaste={onPaste}
-                placeholder={ytUrl ? "Paste the video's description here (optional, it often lists the amounts)…" : fillRecipe ? "Paste the caption or recipe text (optional)…" : "Paste the Reel's caption here (it usually has the ingredient amounts)…"}
-                aria-label="Paste a link or caption"
-              />
+            {!ytUrl && (
+              <div className="add-step">
+                <span className="add-step-icon" aria-hidden="true"><Icon name="play" size={18} /></span>
+                <div className="add-step-body">
+                  <span className="add-step-title">Add the video <span className="add-opt">{fillRecipe ? "or screenshots" : "Instagram only"}</span></span>
+                  <span className="add-step-hint">{fillRecipe ? "A recording or screenshots of the recipe." : "Download the Reel and add it here, so crumbs can watch it. You can also add it later."}</span>
+                {!video && (
+                  <button type="button" className={`dropzone big ${dragging ? "over" : ""}`} onClick={() => fileRef.current?.click()}>
+                    <Icon name="upload" size={22} />
+                    <strong>Drop the video here or click to choose</strong>
+                    <span className="muted small">Screenshots work too</span>
+                  </button>
+                )}
+                {files.length > 0 && (
+                  <div className="shots">
+                    {video && (
+                      <div className="shot shot-video wide">
+                        <Icon name="play" size={22} />
+                        <span className="shot-name">{video.file.name}</span>
+                        <span>{(video.file.size / 1024 / 1024).toFixed(1)} MB</span>
+                        <button type="button" className="shot-x" aria-label="Remove video" onClick={() => setFiles((x) => x.filter((f) => f !== video))}>
+                          <Icon name="x" size={12} />
+                        </button>
+                      </div>
+                    )}
+                    {images.map((f, i) => (
+                      <div key={i} className="shot">
+                        <img src={f.preview!} alt={`Screenshot ${i + 1}`} />
+                        <button type="button" className="shot-x" aria-label="Remove screenshot" onClick={() => setFiles((x) => x.filter((y) => y !== f))}>
+                          <Icon name="x" size={12} />
+                        </button>
+                      </div>
+                    ))}
+                    <button type="button" className="shot shot-add" onClick={() => fileRef.current?.click()} aria-label="Add more"><Icon name="plus" /></button>
+                  </div>
+                )}
+                </div>
+              </div>
+            )}
+
+            <div className="add-step">
+              <span className="add-step-icon" aria-hidden="true"><Icon name="list" size={18} /></span>
+              <div className="add-step-body">
+                <span className="add-step-title">Paste the caption <span className="add-opt">optional</span></span>
+                <span className="add-step-hint">{ytUrl ? "The video's description, if it lists the amounts." : "Most creators put the ingredient amounts here."}</span>
+                <textarea
+                  className="smart-input"
+                  rows={3}
+                  value={caption}
+                  onChange={(e) => onSmartText(e.target.value)}
+                  onPaste={onPaste}
+                  placeholder="Paste the caption or recipe text…"
+                  aria-label="Paste a link or caption"
+                />
+              </div>
             </div>
             <input ref={fileRef} type="file" accept="image/*,video/*" multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
-
-            <button type="button" className="link-btn help-toggle" onClick={() => setHelp(!help)} aria-expanded={help}>
-              {help ? "Hide tips" : "Tips"}
-            </button>
-            {help && (
-              <ul className="help-list">
-                <li><strong>YouTube:</strong> the link is all you need.</li>
-                <li><strong>Add the link</strong> so you can rewatch the original and crumbs can warn you about duplicates.</li>
-                <li><strong>Paste the caption too.</strong> Most creators put the ingredient amounts there, and a downloaded video doesn't include it.</li>
-                <li><strong>Only have an Instagram link?</strong> Save it now and add the downloaded video later.</li>
-              </ul>
-            )}
 
             {!geminiKey && (files.length > 0 || caption.trim().length > 0) && (
               <p className="form-note">

@@ -4,6 +4,8 @@ import { CUISINES, MEALS, TAGS } from "@/lib/constants";
 import { canonicalise, displayName, normaliseName } from "@/lib/synonyms";
 import { instagramShortcode, newId } from "@/lib/recipe-utils";
 import { resizeImage } from "@/lib/image";
+import { parsePastedRecipe } from "@/lib/paste";
+import { readRecipe } from "@/lib/gemini";
 import { Icon, ToggleChip } from "./ui";
 
 type Props = {
@@ -12,6 +14,8 @@ type Props = {
   onCancel: () => void;
   onSave: (draft: RecipeDraft) => Promise<void>;
   uploadImage: (dataUrl: string) => Promise<string>;
+  /** With a Gemini key, pasted text is read by Gemini; without one, by the built-in reader. */
+  apiKey?: string;
 };
 
 const toggle = (list: string[], v: string) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
@@ -19,7 +23,7 @@ const numOrNull = (v: string) => (v.trim() === "" || isNaN(Number(v)) ? null : M
 
 type IngRow = Ingredient & { autoCanonical: boolean };
 
-export function RecipeEditor({ initial, title, onCancel, onSave, uploadImage }: Props) {
+export function RecipeEditor({ initial, title, onCancel, onSave, uploadImage, apiKey }: Props) {
   const [d, setD] = useState<RecipeDraft>(initial);
   const [rows, setRows] = useState<IngRow[]>(
     initial.ingredients.map((i) => ({ ...i, autoCanonical: canonicalise(i.original) === i.canonical }))
@@ -30,6 +34,10 @@ export function RecipeEditor({ initial, title, onCancel, onSave, uploadImage }: 
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pasteText, setPasteText] = useState("");
+  const [pasting, setPasting] = useState(false);
+  const [pasteNote, setPasteNote] = useState<string | null>(null);
+  const [undo, setUndo] = useState<{ d: RecipeDraft; rows: IngRow[]; steps: string[] } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const photoSrc = d.imageUrl;
 
@@ -54,6 +62,51 @@ export function RecipeEditor({ initial, title, onCancel, onSave, uploadImage }: 
     }
     setBulk("");
     setBulkText("");
+  }
+
+  /** "Paste the whole recipe": fills the empty fields and takes the pasted ingredients and steps. */
+  async function fillFromPaste() {
+    const text = pasteText.trim();
+    if (!text) return;
+    setPasting(true);
+    setPasteNote(null);
+    let name: string | null = null, servings: number | null = null, prep: number | null = null, cook: number | null = null;
+    let ings: string[] = [], method: string[] = [], creator: string | null = null;
+    try {
+      if (apiKey) {
+        const { draft } = await readRecipe({ apiKey, files: [], text });
+        name = draft.name || null; servings = draft.servings ?? null; prep = draft.prepMinutes ?? null; cook = draft.cookMinutes ?? null;
+        ings = (draft.ingredients ?? []).map((i) => i.original).filter(Boolean); method = (draft.steps ?? []).filter(Boolean);
+        creator = draft.creator ?? null;
+      }
+    } catch { /* fall back to the built-in reader */ }
+    if (!ings.length && !method.length) {
+      const p = parsePastedRecipe(text);
+      name = p.name; servings = p.servings; prep = p.prepMinutes; cook = p.cookMinutes; ings = p.ingredients; method = p.steps;
+    }
+    setPasting(false);
+    if (!ings.length && !method.length && !name) {
+      setPasteNote("Couldn't find a recipe in that. Try including the ingredients and the steps.");
+      return;
+    }
+    setUndo({ d, rows, steps });
+    const filled: string[] = [];
+    const patch: Partial<RecipeDraft> = {};
+    if (name && !d.name.trim()) { patch.name = name; filled.push("name"); }
+    if (servings && !d.servings) { patch.servings = servings; patch.servingsEstimated = false; filled.push("serves"); }
+    if (prep != null && d.prepMinutes == null) { patch.prepMinutes = prep; filled.push("prep time"); }
+    if (cook != null && d.cookMinutes == null) { patch.cookMinutes = cook; filled.push("cook time"); }
+    if (creator && !d.creator) { patch.creator = creator; filled.push("recipe by"); }
+    set(patch);
+    if (ings.length) { setRows(ings.map((l) => ({ id: newId(), original: l, canonical: canonicalise(l), autoCanonical: true }))); filled.push(`${ings.length} ingredients`); }
+    if (method.length) { setSteps(method); filled.push(`${method.length} steps`); }
+    setPasteNote(`Filled ${filled.join(", ")}. Check them below, then save.`);
+    setPasteText("");
+  }
+
+  function undoPaste() {
+    if (!undo) return;
+    setD(undo.d); setRows(undo.rows); setSteps(undo.steps); setUndo(null); setPasteNote(null);
   }
 
   function moveStep(i: number, dir: -1 | 1) {
@@ -127,6 +180,20 @@ export function RecipeEditor({ initial, title, onCancel, onSave, uploadImage }: 
         </button>
       </div>
       {error && <p className="form-error" role="alert">{error}</p>}
+
+      <section className="ed-paste">
+        <div className="ed-paste-head">
+          <h2 className="ed-title">Paste the whole recipe</h2>
+          <p className="muted small">Copy everything from the caption, a website or a note. crumbs puts the name, times, ingredients and steps in the right fields.</p>
+        </div>
+        <textarea className="input" rows={5} value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder={"Palak Paneer\nServes 3 · Prep 15 min · Cook 25 min\n\nIngredients\n2 bunches spinach\n200 g paneer…\n\nMethod\n1. Blanch the spinach…"} aria-label="Paste the whole recipe" />
+        <div className="ed-paste-foot">
+          <button type="button" className="btn btn-primary btn-sm" onClick={fillFromPaste} disabled={!pasteText.trim() || pasting}>
+            <Icon name="sparkle" size={16} /> {pasting ? "Reading…" : "Fill the fields"}
+          </button>
+          {pasteNote && <p className="small" role="status">{pasteNote} {undo && <button type="button" className="link-btn u" onClick={undoPaste}>Undo</button>}</p>}
+        </div>
+      </section>
 
       <div className="editor-grid">
         <section className="ed-card">

@@ -152,16 +152,16 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
           <h1 className="home-title px" id="whats-cooking">{filters.favourites ? "Favourites" : "What's cooking?"}</h1>
         </div>
         <label className="search">
-          <span className="search-arrow px" aria-hidden="true">→</span>
+          <Icon name="search" size={20} className="search-icon" />
           <input
             type="search"
             value={filters.query}
             onChange={(e) => set({ query: e.target.value })}
-            placeholder="paneer, quick dinner, something sweet…"
+            placeholder="Search paneer, quick dinner…"
             aria-label="Search recipes"
           />
           {filters.query && (
-            <button className="link-btn" onClick={() => set({ query: "" })} aria-label="Clear search">Clear</button>
+            <button className="search-clear" onClick={() => set({ query: "" })} aria-label="Clear search"><Icon name="x" size={18} /></button>
           )}
         </label>
 
@@ -175,8 +175,8 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
             );
           })}
           <span className="quick-gap" />
-          <button className={`quick-cat filters-toggle ${sheetCount ? "on" : ""}`} onClick={() => setSheet(true)}>
-            Filters{sheetCount ? ` (${sheetCount})` : " +"}
+          <button className={`tool-btn filters-toggle ${sheetCount ? "on" : ""}`} onClick={() => setSheet(true)}>
+            <Icon name="filter" size={16} />Filters{sheetCount ? ` · ${sheetCount}` : ""}
           </button>
           <Dropdown className="sort" label="Sort recipes" value={sort} options={SORTS} onChange={(v) => setSort(v as Sort)} />
         </div>

@@ -519,3 +519,24 @@ textarea.input { padding: 10px 12px; resize: vertical; line-height: 1.5; }
   .rp-no { padding-left: 12px; }
   .facts-3 > div { padding: 10px 8px; }
 }
+
+/* ---------- Recipe page, round 2: photo first and smaller, number before the name, one row of actions ---------- */
+.rp-about > .rp-photo { width: min(100%, 280px); }
+.rp-stamp { right: -40px; top: -18px; }
+.rp-label { display: block; border-bottom: 1px solid var(--ink); padding: 14px 0 16px; }
+.rp-kicker { margin: 0 0 10px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.rp-kicker .rp-no-num { font-size: 30px; line-height: 1; }
+.rp-actions { flex-wrap: nowrap; gap: 18px; }
+.rp-actions .btn-lg { min-height: 46px; padding: 0 20px; }
+.rp-actions .rp-link { white-space: nowrap; }
+.rp-actions .coll-add input { width: 140px; }
+.heart-btn { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--ink); display: grid; place-items: center; flex-shrink: 0; margin-left: auto; }
+.heart-btn:hover, .heart-btn.on { background: var(--ink); color: var(--bg); }
+.collections { margin-top: -10px; gap: 8px; }
+.collections .label { margin-right: 2px; }
+@media (max-width: 640px) {
+  .rp-about > .rp-photo { width: 62%; }
+  .rp-stamp { right: -60px; top: -10px; }
+  .rp-actions { flex-wrap: wrap; gap: 14px 16px; }
+  .heart-btn { margin-left: 0; }
+}

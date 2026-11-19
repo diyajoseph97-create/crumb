@@ -177,17 +177,25 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
       <div className="rp-grid">
         {/* ---------- Left: about the dish (stays put while you scroll) ---------- */}
         <aside className="rp-about">
-          <div className="rp-label">
-            <div className="rp-label-main">
-              {categories.length > 0 && <p className="label">{categories.join(" · ")}</p>}
-              <h1 className="rp-title px">{r.name || "Untitled recipe"}</h1>
-            </div>
-            {no && (
-              <div className="rp-no">
-                <span className="rp-no-label">Recipe<br />No.</span>
-                <span className="rp-no-num px">{no}</span>
-              </div>
+          <div className={`rp-photo ${r.imageUrl ? "" : "no-photo"}`}>
+            <RecipeImage recipe={r} variant="hero" />
+            {stampText && <Stamp text={stampText} size={104} className="rp-stamp" />}
+            {!r.imageUrl && onSetPhoto && !view.on && (
+              <label className="btn btn-outline btn-sm add-photo">
+                Add a photo
+                <input type="file" accept="image/*" hidden onChange={async (e) => {
+                  const f = (e.target as HTMLInputElement).files?.[0];
+                  if (f) onSetPhoto(await resizeImage(f));
+                }} />
+              </label>
             )}
+          </div>
+          <div className="rp-label">
+            <p className="rp-kicker">
+              {no && <span className="rp-no-num px" aria-label={`Recipe number ${no}`}>{no}</span>}
+              {categories.length > 0 && <span className="label">{categories.join(" · ")}</span>}
+            </p>
+            <h1 className="rp-title px">{r.name || "Untitled recipe"}</h1>
           </div>
           <p className="rp-by">
             {r.creator && <>By <span className="rp-creator">{r.creator.startsWith("@") || r.creator.includes(" ") ? r.creator : `@${r.creator}`}</span>{r.sourceUrl ? " · " : ""}</>}
@@ -235,23 +243,15 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
           <div className="rp-actions">
             <button className="btn btn-primary btn-lg" onClick={() => setCooking(true)}>Start cooking</button>
             <button className="rp-link u" onClick={toggleList} aria-pressed={onList}>{onList ? "On your list ✓" : "Add to list"}</button>
-            {!view.on && <button className="rp-link u fav-toggle" onClick={onFavourite} aria-pressed={r.favourite}>{r.favourite ? "♥ Favourite" : "Favourite"}</button>}
-          </div>
-          <Collections value={r.collections ?? []} all={allCollections} onChange={!view.on && onUpdate ? (c) => onUpdate({ collections: c }) : undefined} />
-
-          <div className={`rp-photo ${r.imageUrl ? "" : "no-photo"}`}>
-            <RecipeImage recipe={r} variant="hero" />
-            {stampText && <Stamp text={stampText} size={140} className="rp-stamp" />}
-            {!r.imageUrl && onSetPhoto && !view.on && (
-              <label className="btn btn-outline btn-sm add-photo">
-                Add a photo
-                <input type="file" accept="image/*" hidden onChange={async (e) => {
-                  const f = (e.target as HTMLInputElement).files?.[0];
-                  if (f) onSetPhoto(await resizeImage(f));
-                }} />
-              </label>
+            <Collections value={r.collections ?? []} all={allCollections} onChange={!view.on && onUpdate ? (c) => onUpdate({ collections: c }) : undefined} />
+            {!view.on && (
+              <button className={`heart-btn fav-toggle ${r.favourite ? "on" : ""}`} onClick={onFavourite} aria-pressed={r.favourite} aria-label={r.favourite ? "Remove from favourites" : "Add to favourites"}>
+                <Icon name="heart" size={18} filled={r.favourite} />
+              </button>
             )}
           </div>
+          <CollectionChips value={r.collections ?? []} onChange={!view.on && onUpdate ? (c) => onUpdate({ collections: c }) : undefined} />
+
         </aside>
 
         {/* ---------- Right: how to make it, one flowing column ---------- */}
@@ -379,32 +379,38 @@ function MyNotes({ value, onSave }: { value: string; onSave: (t: string) => void
   );
 }
 
-/** Your own groups for this recipe, e.g. "Weeknight". */
+/** "Add to collection": a link like "Add to list" that turns into a name box. */
 function Collections({ value, all, onChange }: { value: string[]; all: string[]; onChange?: (c: string[]) => void }) {
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
-  if (!onChange && value.length === 0) return null;
+  if (!onChange) return null;
   const add = () => {
     const n = name.trim();
-    if (n && !value.includes(n)) onChange?.([...value, n]);
+    if (n && !value.includes(n)) onChange([...value, n]);
     setName("");
     setAdding(false);
   };
+  return adding ? (
+    <form className="coll-add" onSubmit={(e) => { e.preventDefault(); add(); }}>
+      <input autoFocus list="coll-list" value={name} onChange={(e) => setName((e.target as HTMLInputElement).value)} onBlur={add} placeholder="e.g. Weeknight" aria-label="Collection name" maxLength={40} />
+      <datalist id="coll-list">{all.filter((c) => !value.includes(c)).map((c) => <option key={c} value={c} />)}</datalist>
+    </form>
+  ) : (
+    <button className="rp-link u coll-new" onClick={() => setAdding(true)}>Add to collection</button>
+  );
+}
+
+/** The collections this recipe is in, under the buttons. */
+function CollectionChips({ value, onChange }: { value: string[]; onChange?: (c: string[]) => void }) {
+  if (value.length === 0) return null;
   return (
     <div className="collections">
+      <span className="label">In</span>
       {value.map((c) => (
         <span key={c} className="coll-chip">
           {c}
           {onChange && <button aria-label={`Remove from ${c}`} onClick={() => onChange(value.filter((x) => x !== c))}><Icon name="x" size={11} /></button>}
         </span>
-      ))}
-      {onChange && (adding ? (
-        <form className="coll-add" onSubmit={(e) => { e.preventDefault(); add(); }}>
-          <input autoFocus list="coll-list" value={name} onChange={(e) => setName((e.target as HTMLInputElement).value)} onBlur={add} placeholder="e.g. Weeknight" aria-label="Collection name" maxLength={40} />
-          <datalist id="coll-list">{all.filter((c) => !value.includes(c)).map((c) => <option key={c} value={c} />)}</datalist>
-        </form>
-      ) : (
-        <button className="coll-chip coll-new" onClick={() => setAdding(true)}>+ {value.length ? "Collection" : "Add to a collection"}</button>
       ))}
     </div>
   );

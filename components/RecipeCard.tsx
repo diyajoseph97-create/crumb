@@ -5,6 +5,14 @@ import type { ImportJob } from "@/lib/importer";
 import { Icon, useRecipeNumber, useViewOnly } from "./ui";
 import { RecipeImage } from "./RecipeImage";
 
+/** Same line on every card: who made it, else where it came from. */
+function byLine(r: Recipe) {
+  if (r.creator) return `by ${r.creator.startsWith("@") || r.creator.includes(" ") ? r.creator : `@${r.creator}`}`;
+  if (isYouTube(r.sourceShortcode || r.sourceUrl)) return "from YouTube";
+  if (r.sourceUrl) return "from Instagram";
+  return "added by you";
+}
+
 // Cards only re-draw when their own recipe changes (not on every toast or new recipe).
 export const RecipeCard = memo(RecipeCardView, (a, b) => a.recipe === b.recipe);
 
@@ -29,9 +37,9 @@ function RecipeCardView({
         </div>
         <div className="card-body">
           <h3 className="card-title px">{recipe.name || "Untitled recipe"}</h3>
-          {recipe.creator && <p className="card-by">by {recipe.creator.startsWith("@") || recipe.creator.includes(" ") ? recipe.creator : `@${recipe.creator}`}</p>}
+          <p className="card-by">{byLine(recipe)}</p>
           <p className="card-sub">
-            {[recipe.cuisines.find((c) => c !== "Indian") ?? recipe.cuisines[0], total != null ? `${recipe.timesEstimated ? "~" : ""}${formatMinutes(total)}` : null].filter(Boolean).join(" · ")}
+            {[recipe.cuisines.find((c) => c !== "Indian") ?? recipe.cuisines[0] ?? recipe.meals[0], total != null ? `${recipe.timesEstimated ? "~" : ""}${formatMinutes(total)}` : null].filter(Boolean).join(" · ") || "Time not given"}
           </p>
         </div>
       </button>

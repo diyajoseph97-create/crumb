@@ -54,3 +54,15 @@ export function convertLine(text: string, to: UnitSystem): string {
   }
   return text;
 }
+
+/** Which of the two a recipe is mostly written in: cups/ounces ("us") or grams/ml ("metric"). */
+export function nativeUnits(lines: string[]): "metric" | "us" {
+  let us = 0, met = 0;
+  for (const l of lines) {
+    const m = l.replace(/fl\.?\s*oz/i, "floz").match(LINE);
+    if (!m) continue;
+    const u = m[2].toLowerCase().replace(/\.$/, "");
+    if (TO_METRIC[u]) us++; else if (FROM_METRIC[u]) met++;
+  }
+  return us > met ? "us" : "metric";
+}

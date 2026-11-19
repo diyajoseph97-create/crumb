@@ -3,11 +3,11 @@
 // ingredients (with servings and units together), steps, healthier swaps, notes.
 import { isYouTube } from "@/lib/recipe-utils";
 import { resizeImage } from "@/lib/image";
-import { convertLine, type UnitSystem } from "@/lib/units";
+import { convertLine, nativeUnits } from "@/lib/units";
 import { addToList, isOnList, onListChange, removeFromList } from "@/lib/shopping";
 import { CookMode, Stars } from "./CookMode";
 import type { ImportJob } from "@/lib/importer";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Recipe } from "@/lib/types";
 import { formatMinutes, missingParts, isIncomplete, totalIsPartial, totalMinutes } from "@/lib/recipe-utils";
 import { scaleFactor, scaleLine, splitIngredient } from "@/lib/scale";
@@ -96,10 +96,10 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [r.id, r.healthTips, hasKey]);
   const [servings, setServings] = useState<number>(r.servings ?? 1);
-  const [units, setUnitsState] = useState<UnitSystem>(() => {
-    try { return (localStorage.getItem("crumb-units") as UnitSystem) || "as-written"; } catch { return "as-written"; }
-  });
-  const setUnits = (u: UnitSystem) => { setUnitsState(u); try { localStorage.setItem("crumb-units", u); } catch {} };
+  // Grams / Cups. A recipe opens in the one it was written in, which shows the original amounts untouched.
+  const native = useMemo(() => nativeUnits(r.ingredients.map((i) => i.original)), [r.id]);
+  const [units, setUnits] = useState<"metric" | "us">(native);
+  useEffect(() => setUnits(native), [native]);
   const [cooking, setCooking] = useState(false);
   const [onList, setOnList] = useState(isOnList(r.id));
   useEffect(() => {
@@ -111,7 +111,7 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
   const factor = r.servings ? scaleFactor(r.servings, servings) : 1;
   const lines = r.ingredients.map((i) => {
     const scaled = scaleLine(i.original, factor);
-    return { ...i, scaled, shown: convertLine(scaled.text, units) };
+    return { ...i, scaled, shown: convertLine(scaled.text, units === native ? "as-written" : units) };
   });
   const servingsLabel = r.servings ? `For ${servings} ${servings === 1 ? "person" : "people"}` : "Servings not given";
   function toggleList() {
@@ -273,7 +273,7 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
                   <span className="muted small">Add a serving size to scale</span>
                 )}
                 <div className="units" role="group" aria-label="Units">
-                  {([["as-written", "As written"], ["metric", "Grams"], ["us", "Cups"]] as [UnitSystem, string][]).map(([u, label]) => (
+                  {([["metric", "Grams"], ["us", "Cups"]] as ["metric" | "us", string][]).map(([u, label]) => (
                     <button key={u} className={units === u ? "on" : ""} aria-pressed={units === u} onClick={() => setUnits(u)}>{label}</button>
                   ))}
                 </div>

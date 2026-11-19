@@ -675,10 +675,11 @@ b, strong { font-weight: 500; } /* only 400 and 500 are loaded; no fake bold */
 /* Meal chips and tool buttons look tappable */
 .quick-cats, .coll-row { gap: 8px; padding: 0 0 20px; border-bottom: 0; }
 .quick-cat { height: 36px; padding: 0 16px; border: 1px solid var(--rule); border-radius: 999px; background: #fff; text-decoration: none !important; transition: border-color 0.15s, background 0.15s; }
-.quick-cat:hover { border-color: var(--ink); }
+@media (hover: hover) { .quick-cat:hover { border-color: var(--ink); } }
 .quick-cat.on { background: var(--ink); border-color: var(--ink); color: var(--bg); }
 .tool-btn, .sort .dd-trigger { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 16px; border: 1.5px solid var(--ink); border-radius: 999px; font-size: var(--caps); font-weight: 500; letter-spacing: var(--caps-ls); text-transform: uppercase; white-space: nowrap; }
-.tool-btn:hover, .sort .dd-trigger:hover, .sort.open .dd-trigger { background: var(--ink); color: var(--bg); }
+@media (hover: hover) { .tool-btn:hover, .sort .dd-trigger:hover { background: var(--ink); color: var(--bg); } }
+.sort.open .dd-trigger { background: var(--ink); color: var(--bg); }
 .tool-btn.on { background: var(--ink); color: var(--bg); }
 .coll-row .label { margin-right: 8px; }
 @media (max-width: 640px) {
@@ -753,3 +754,5 @@ b, strong { font-weight: 500; } /* only 400 and 500 are loaded; no fake bold */
 .cart-btn:hover { background: var(--soft); color: var(--ink); }
 .cart-btn.on { background: none; color: var(--ink); }
 .cart-btn.on:hover { background: var(--soft); }
+.fav-chip { display: inline-flex; align-items: center; gap: 6px; }
+.fav-chip .icon { stroke-width: 2; }

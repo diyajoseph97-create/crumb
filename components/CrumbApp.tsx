@@ -511,20 +511,6 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
         )}
         <nav className="topnav" aria-label="Cookbook">
           {viewOnly && <span className="nav-note">Shared with you · view only</span>}
-          {!viewOnly && (
-            <button
-              className={`nav-icon fav-link ${filters.favourites ? "on" : ""}`}
-              aria-pressed={filters.favourites}
-              aria-label="Favourites"
-              title="Favourites"
-              onClick={() => {
-                setFilters({ ...filters, favourites: !filters.favourites });
-                go("");
-              }}
-            >
-              <Icon name="heart" size={22} filled={filters.favourites} />
-            </button>
-          )}
           <button className="nav-icon list-link" onClick={() => setShopOpen(true)} aria-label={`Shopping list${shopCount ? `, ${shopCount} recipes` : ""}`} title="Shopping list">
             <Icon name="cart" size={22} />
             {shopCount > 0 && <span className="nav-count" aria-hidden="true">{shopCount}</span>}

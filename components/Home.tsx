@@ -3,7 +3,7 @@
 // of large-photo recipe cards.
 import { useEffect, useMemo, useState } from "react";
 import type { Recipe } from "@/lib/types";
-import { activeFilterCount, allIngredients, applyFilters, EMPTY_FILTERS, type Filters } from "@/lib/filter";
+import { allIngredients, applyFilters, EMPTY_FILTERS, type Filters } from "@/lib/filter";
 import { displayName } from "@/lib/synonyms";
 import { captionNotRead } from "@/lib/importer";
 import { isSavedForLater, isYouTube, totalMinutes } from "@/lib/recipe-utils";
@@ -119,7 +119,6 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
   };
   const results = useMemo(() => sortRecipes(applyFilters(recipes, filters), sort), [recipes, filters, sort]);
   const ingredients = useMemo(() => allIngredients(recipes), [recipes]);
-  const count = activeFilterCount(filters);
   // Everything set inside the Filters sheet (meal buttons are counted separately).
   const quickMeal = filters.meals.length === 1 && (QUICK_MEALS as readonly string[]).includes(filters.meals[0]);
   const collections = useMemo(() => [...new Set(recipes.flatMap((r) => r.collections ?? []))].sort((a, b) => a.localeCompare(b)), [recipes]);
@@ -138,7 +137,6 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
   );
 
   const chips: { key: string; label: string; tone: string; remove: () => void }[] = [
-    ...(filters.favourites ? [{ key: "fav", label: "Favourites", tone: "green", remove: () => set({ favourites: false }) }] : []),
     ...(filters.untried ? [{ key: "untried", label: "Not made yet", tone: "", remove: () => set({ untried: false }) }] : []),
     ...filters.collections.map((c) => ({ key: "c" + c, label: c, tone: "", remove: () => set({ collections: filters.collections.filter((x) => x !== c) }) })),
     ...filters.include.map((x) => ({ key: "i" + x, label: `With ${displayName(x)}`, tone: "", remove: () => set({ include: filters.include.filter((y) => y !== x) }) })),
@@ -168,13 +166,18 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
 
         <div className="quick-cats" role="group" aria-label="Meal">
           {QUICK_MEALS.map((m) => {
-            const on = m === "All recipes" ? filters.meals.length === 0 : filters.meals.length === 1 && filters.meals[0] === m;
+            const on = m === "All recipes" ? filters.meals.length === 0 && !filters.favourites : filters.meals.length === 1 && filters.meals[0] === m;
             return (
-              <button key={m} className={`quick-cat ${on ? "on" : ""}`} aria-pressed={on} onClick={() => set({ meals: m === "All recipes" || on ? [] : [m] })}>
+              <button key={m} className={`quick-cat ${on ? "on" : ""}`} aria-pressed={on} onClick={() => set(m === "All recipes" ? { meals: [], favourites: false } : { meals: on ? [] : [m] })}>
                 {m === "All recipes" ? "All" : m}
               </button>
             );
           })}
+          {!viewOnly && (
+            <button className={`quick-cat fav-chip ${filters.favourites ? "on" : ""}`} aria-pressed={filters.favourites} onClick={() => set({ favourites: !filters.favourites })}>
+              <Icon name="heart" size={14} filled={filters.favourites} /> Favourites
+            </button>
+          )}
           <span className="quick-gap" />
           <button className={`tool-btn filters-toggle ${sheetCount ? "on" : ""}`} onClick={() => setSheet(true)}>
             <Icon name="filter" size={16} />Filters{sheetCount ? ` · ${sheetCount}` : ""}
@@ -200,7 +203,7 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
           <p className="result-count">
             {loading ? "Opening your cookbook…" : `${results.length} ${results.length === 1 ? "recipe" : "recipes"}${jobs.some((j) => j.status === "adding") ? ` · ${jobs.filter((j) => j.status === "adding").length} being added` : ""}`}
           </p>
-          {(chips.length > 0 || count > 0) && (
+          {(chips.length > 0 || sheetCount > 0) && (
             <div className="active-chips">
               {chips.map((c) => (
                 <button key={c.key} className={`achip tone-${c.tone}`} onClick={c.remove} aria-label={`Remove filter ${c.label}`}>

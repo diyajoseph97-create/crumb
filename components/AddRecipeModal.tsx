@@ -47,6 +47,8 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
   // A video for one of the "Saved for later" Reels fills that one in, instead of making a new recipe.
   const saved = recipes.filter(isSavedForLater).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const [target, setTarget] = useState<string>("new");
+  // "From link" or "From screenshots" (screenshots or a screen recording).
+  const [mode, setMode] = useState<"link" | "shots">("link");
   const fillRecipe = fillProp ?? (target !== "new" ? saved.find((r) => r.id === target) ?? null : null);
 
   // Reset before the window is shown, so nothing typed straight away is wiped.
@@ -59,6 +61,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
     setCaption(shared?.caption || "");
     setAuto(null);
     setTarget("new");
+    setMode(shared?.files.length ? "shots" : "link");
     if (shared) {
       if (shared.files.length) {
         const dt = new DataTransfer();
@@ -109,6 +112,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
     if (!list) return;
     setError(null);
     const incoming = [...list].filter((f) => f.type.startsWith("image/") || f.type.startsWith("video/"));
+    if (incoming.length) setMode("shots");
     setFiles((cur) => {
       let next = [...cur];
       for (const f of incoming) {
@@ -218,6 +222,13 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
               </p>
             </div>
 
+            {!fillRecipe && (
+              <div className="seg" role="tablist" aria-label="Add from">
+                <button type="button" role="tab" aria-selected={mode === "link"} className={mode === "link" ? "on" : ""} onClick={() => setMode("link")}><Icon name="link" size={16} /> From link</button>
+                <button type="button" role="tab" aria-selected={mode === "shots"} className={mode === "shots" ? "on" : ""} onClick={() => setMode("shots")}><Icon name="image" size={16} /> From screenshots</button>
+              </div>
+            )}
+
             {!fillProp && saved.length > 0 && files.length > 0 && !url && (
               <div className="field which-reel">
                 <span className="field-label" id="which-reel-l">Which Reel is this video from?</span>
@@ -235,12 +246,12 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
               </div>
             )}
 
-            {!fillRecipe && (
+            {!fillRecipe && mode === "link" && (
               <div className="add-step">
                 <span className="add-step-icon" aria-hidden="true"><Icon name="link" size={18} /></span>
                 <label className="add-step-body link-field">
                   <span className="add-step-title">Paste the link</span>
-                  <span className="add-step-hint">From Instagram or YouTube. Often that's all you need: crumbs reads the caption or the video.</span>
+                  <span className="add-step-hint">From Instagram or YouTube. That's usually all you need: crumbs reads the caption or the video.</span>
                   <span className={`link-input ${url && !code ? "bad" : ""}`}>
                     <input type="url" inputMode="url" value={url} onChange={(e) => setUrl(e.target.value.trim())} placeholder="https://www.instagram.com/reel/…" aria-label="Recipe link" />
                     {code && <Icon name="check" size={16} className="link-ok" />}
@@ -250,17 +261,17 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
               </div>
             )}
 
-            {!ytUrl && (
+            {(fillRecipe || mode === "shots") && !(fillRecipe && ytUrl) && (
               <div className="add-step">
-                <span className="add-step-icon" aria-hidden="true"><Icon name="play" size={18} /></span>
+                <span className="add-step-icon" aria-hidden="true"><Icon name="image" size={18} /></span>
                 <div className="add-step-body">
-                  <span className="add-step-title">Add the video <span className="add-opt">{fillRecipe ? "or screenshots" : "if needed"}</span></span>
-                  <span className="add-step-hint">{fillRecipe ? "A recording or screenshots of the recipe." : "Only if the recipe isn't in the caption. A screen recording works, and you can add it later."}</span>
+                  <span className="add-step-title">{fillRecipe ? "Add the video or screenshots" : "Add screenshots or a recording"}</span>
+                  <span className="add-step-hint">{fillRecipe ? "A recording or screenshots of the recipe." : "Screenshots of the recipe, or a screen recording of the Reel."}</span>
                 {!video && (
                   <button type="button" className={`dropzone big ${dragging ? "over" : ""}`} onClick={() => fileRef.current?.click()}>
                     <Icon name="upload" size={22} />
-                    <strong>Drop the video here or click to choose</strong>
-                    <span className="muted small">Screenshots work too</span>
+                    <strong>Drop screenshots or a recording here</strong>
+                    <span className="muted small">or click to choose</span>
                   </button>
                 )}
                 {files.length > 0 && (
@@ -293,7 +304,7 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
             <div className="add-step">
               <span className="add-step-icon" aria-hidden="true"><Icon name="list" size={18} /></span>
               <div className="add-step-body">
-                <span className="add-step-title">Paste the caption <span className="add-opt">optional</span></span>
+                <span className="add-step-title">{mode === "shots" && !fillRecipe ? "Add the caption" : "Paste the caption"} <span className="add-opt">optional</span></span>
                 <span className="add-step-hint">{ytUrl ? "The video's description, if it lists the amounts." : "Most creators put the ingredient amounts here."}</span>
                 <textarea
                   className="smart-input"

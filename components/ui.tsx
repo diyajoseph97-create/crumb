@@ -241,7 +241,7 @@ const BOWL = (
 export const dietIcon = (tag: string | undefined) => (tag && DIET_ICONS[tag]) || BOWL;
 
 // ---------- A dropdown that looks like the rest of crumbs (not the browser's) ----------
-export function Dropdown<T extends string>({ value, options, onChange, label, className = "" }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; label: string; className?: string }) {
+export function Dropdown<T extends string>({ value, options, onChange, label, className = "", prefix }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; label: string; className?: string; prefix?: string }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const wrap = useRef<HTMLDivElement>(null);
@@ -265,7 +265,7 @@ export function Dropdown<T extends string>({ value, options, onChange, label, cl
   return (
     <div className={`dd ${open ? "open" : ""} ${className}`} ref={wrap} onKeyDown={onKey}>
       <button type="button" className="dd-trigger" aria-haspopup="listbox" aria-expanded={open} aria-label={`${label}: ${current?.label}`} onClick={() => { setActive(Math.max(0, options.indexOf(current))); setOpen((o) => !o); }}>
-        <span>{current?.label}</span><span aria-hidden="true" className="dd-arrow">↓</span>
+        {prefix && <span className="dd-prefix">{prefix}</span>}<span>{current?.label}</span><span aria-hidden="true" className="dd-arrow">↓</span>
       </button>
       {open && (
         <ul className="dd-list" role="listbox" aria-label={label}>

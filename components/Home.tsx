@@ -179,7 +179,7 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
           <button className={`tool-btn filters-toggle ${sheetCount ? "on" : ""}`} onClick={() => setSheet(true)}>
             <Icon name="filter" size={16} />Filters{sheetCount ? ` · ${sheetCount}` : ""}
           </button>
-          <Dropdown className="sort" label="Sort recipes" value={sort} options={SORTS} onChange={(v) => setSort(v as Sort)} />
+          <Dropdown className="sort" label="Sort by" prefix="Sort by" value={sort} options={SORTS} onChange={(v) => setSort(v as Sort)} />
         </div>
 
         {collections.length > 0 && (
@@ -207,7 +207,7 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
                   {c.label} <Icon name="x" size={12} />
                 </button>
               ))}
-              {count > 0 && <button className="link-btn" onClick={clearAll}>Clear all</button>}
+              {sheetCount > 0 && <button className="link-btn" onClick={clearAll}>Clear all</button>}
             </div>
           )}
         </div>

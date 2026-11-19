@@ -36,6 +36,14 @@ export function toggleChecked(key: string) {
   const l = getList();
   save({ ...l, checked: l.checked.includes(key) ? l.checked.filter((k) => k !== key) : [...l.checked, key] });
 }
+/** "I already have this": take one ingredient off the list (from every recipe on it). */
+export function removeItem(key: string) {
+  const l = getList();
+  const recipes = l.recipes
+    .map((r) => ({ ...r, lines: r.lines.filter((line) => (line.canonical || splitIngredient(line.text).name.toLowerCase()) !== key) }))
+    .filter((r) => r.lines.length > 0);
+  save({ recipes, checked: l.checked.filter((k) => k !== key) });
+}
 export const clearList = () => save({ recipes: [], checked: [] });
 
 export type ListItem = { key: string; name: string; amount: string; from: string[] };

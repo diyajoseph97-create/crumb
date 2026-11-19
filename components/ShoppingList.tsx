@@ -1,6 +1,6 @@
 // One combined list of ingredients for the recipes you've added to it.
 import { useEffect, useState } from "react";
-import { clearList, combined, getList, listAsText, onListChange, removeFromList, toggleChecked } from "@/lib/shopping";
+import { clearList, combined, getList, listAsText, onListChange, removeFromList, removeItem, toggleChecked } from "@/lib/shopping";
 import { Icon } from "./ui";
 
 export function useShoppingCount() {
@@ -46,7 +46,7 @@ export function ShoppingList({ onClose, onOpen }: { onClose: () => void; onOpen:
       </div>
       <div className="sheet-body">
         {list.recipes.length === 0 ? (
-          <p className="muted shop-empty">Nothing on your list yet. Open a recipe and tap <strong>Add to list</strong>, and its ingredients land here, added up across recipes.</p>
+          <p className="muted shop-empty">Nothing on your list yet. Open a recipe and tap the cart next to <strong>Ingredients</strong>, and its ingredients land here, added up across recipes.</p>
         ) : (
           <>
             <div className="shop-recipes">
@@ -57,17 +57,18 @@ export function ShoppingList({ onClose, onOpen }: { onClose: () => void; onOpen:
                 </span>
               ))}
             </div>
-            <p className="result-count">{left} of {items.length} left to buy</p>
+            <p className="result-count">{left} of {items.length} left to buy · tick what you've bought, × what you already have</p>
             <ul className="shop-items">
               {items.map((i) => {
                 const on = list.checked.includes(i.key);
                 return (
-                  <li key={i.key}>
+                  <li key={i.key} className="shop-row">
                     <button className={`cook-ing ${on ? "on" : ""}`} aria-pressed={on} onClick={() => toggleChecked(i.key)}>
                       <span className="cook-check">{on && <Icon name="check" size={14} />}</span>
                       <span className="shop-amt">{i.amount}</span>
                       <span className="shop-name">{i.name}{i.from.length > 1 && <span className="muted small"> · {i.from.length} recipes</span>}</span>
                     </button>
+                    <button className="icon-btn sm shop-x" onClick={() => removeItem(i.key)} aria-label={`I already have ${i.name}. Remove it`} title="I already have this"><Icon name="x" size={16} /></button>
                   </li>
                 );
               })}

@@ -4,14 +4,14 @@
 import { isYouTube } from "@/lib/recipe-utils";
 import { resizeImage } from "@/lib/image";
 import { convertLine, nativeUnits } from "@/lib/units";
-import { addToList, isOnList, onListChange, removeFromList } from "@/lib/shopping";
+import { addToList, getList, isOnList, onListChange, removeFromList } from "@/lib/shopping";
 import { CookMode, Stars } from "./CookMode";
 import type { ImportJob } from "@/lib/importer";
 import { useEffect, useMemo, useState } from "react";
 import type { Recipe } from "@/lib/types";
 import { formatMinutes, missingParts, isIncomplete, totalIsPartial, totalMinutes } from "@/lib/recipe-utils";
 import { scaleFactor, scaleLine, splitIngredient } from "@/lib/scale";
-import { ConfirmDialog, Icon, OverflowMenu, PixelIcon, Stamp, dietIcon, useViewOnly } from "./ui";
+import { ConfirmDialog, Icon, Modal, OverflowMenu, PixelIcon, Stamp, dietIcon, useViewOnly } from "./ui";
 import { RecipeImage } from "./RecipeImage";
 
 type Props = {
@@ -114,9 +114,12 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
     return { ...i, scaled, shown: convertLine(scaled.text, units === native ? "as-written" : units) };
   });
   const servingsLabel = r.servings ? `For ${servings} ${servings === 1 ? "person" : "people"}` : "Servings not given";
-  function toggleList() {
-    if (onList) removeFromList(r.id);
-    else addToList({ id: r.id, name: r.name, servings: r.servings ? servings : null, lines: lines.map((l) => ({ text: l.shown, canonical: l.canonical })) });
+  const [picking, setPicking] = useState(false);
+  /** Add the chosen ingredients (the ones you don't already have) to the shopping list. */
+  function addPicked(keep: boolean[]) {
+    const chosen = lines.filter((_, i) => keep[i]);
+    if (!chosen.length) return removeFromList(r.id);
+    addToList({ id: r.id, name: r.name, servings: r.servings ? servings : null, lines: chosen.map((l) => ({ text: l.shown, canonical: l.canonical })) });
   }
   // Only point out amounts that can't scale when the servings have actually been changed.
   const changed = factor !== 1;
@@ -202,16 +205,17 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
               <ReelLink url={r.sourceUrl} onSetLink={onSetLink} />
             </p>
             <div className="rp-tools">
-              {!view.on && onShare && <button className="icon-btn" onClick={onShare} aria-label="Share a view-only link" title="Share a view-only link"><Icon name="share" size={19} /></button>}
               {!view.on && <button className="icon-btn" onClick={onEdit} aria-label="Edit recipe" title="Edit recipe"><Icon name="edit" size={19} /></button>}
               {!view.on && <button className="icon-btn danger" onClick={() => setConfirm(true)} aria-label="Delete recipe" title="Delete recipe"><Icon name="trash" size={19} /></button>}
-              <OverflowMenu
-                label="More actions for this recipe"
-                items={[
-                  { label: onList ? "Remove from shopping list" : "Add to shopping list", onSelect: toggleList, pressed: onList },
-                  ...(canEditColl ? [{ label: "Add to collection", onSelect: () => setAddingColl(true) }] : []),
-                ]}
-              />
+              {(canEditColl || (!view.on && onShare)) && (
+                <OverflowMenu
+                  label="More actions for this recipe"
+                  items={[
+                    ...(canEditColl ? [{ label: "Add to collection", onSelect: () => setAddingColl(true) }] : []),
+                    ...(!view.on && onShare ? [{ label: "Share a view-only link", onSelect: onShare }] : []),
+                  ]}
+                />
+              )}
             </div>
           </div>
 
@@ -264,7 +268,15 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
         {/* ---------- Right: how to make it, one flowing column ---------- */}
         <div className="rp-make">
           <section className="rp-section" aria-labelledby="ing-h">
-            <h2 id="ing-h" className="rp-h px">Ingredients:</h2>
+            <div className="rp-h-row">
+              <h2 id="ing-h" className="rp-h px">Ingredients:</h2>
+              {lines.length > 0 && (
+                <button className={`icon-btn cart-btn ${onList ? "on" : ""}`} onClick={() => setPicking(true)} aria-label={onList ? "On your shopping list. Change or remove" : "Add to shopping list"} title={onList ? "On your shopping list" : "Add to shopping list"}>
+                  <Icon name="cart" size={20} />
+                  {onList && <span className="cart-tick" aria-hidden="true"><Icon name="check" size={10} /></span>}
+                </button>
+              )}
+            </div>
             {lines.length > 0 && (
               <div className="rp-controls">
                 {r.servings ? (
@@ -342,6 +354,9 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
         </div>
       </div>
 
+      <Modal open={picking} onClose={() => setPicking(false)} label="Add to shopping list" variant="sheet">
+        {picking && <ShopPicker recipeId={r.id} lines={lines.map((l) => l.shown)} onList={onList} onDone={(keep) => { if (keep) addPicked(keep); else removeFromList(r.id); setPicking(false); }} onClose={() => setPicking(false)} />}
+      </Modal>
       <ConfirmDialog
         open={confirm}
         title="Delete this recipe?"
@@ -414,6 +429,45 @@ function CollectionChips({ value, onChange }: { value: string[]; onChange?: (c: 
           {onChange && <button aria-label={`Remove from ${c}`} onClick={() => onChange(value.filter((x) => x !== c))}><Icon name="x" size={11} /></button>}
         </span>
       ))}
+    </div>
+  );
+}
+
+/** Untick what you already have; the rest goes on the shopping list. */
+function ShopPicker({ recipeId, lines, onList, onDone, onClose }: { recipeId: string; lines: string[]; onList: boolean; onDone: (keep: boolean[] | null) => void; onClose: () => void }) {
+  const current = getList().recipes.find((x) => x.id === recipeId);
+  const [keep, setKeep] = useState<boolean[]>(() => lines.map((l) => (current ? current.lines.some((c) => c.text === l) : true)));
+  const n = keep.filter(Boolean).length;
+  return (
+    <div className="shop shop-pick">
+      <div className="sheet-head">
+        <span className="sheet-grip" aria-hidden="true" />
+        <h2 className="h-display h-sm">Add to shopping list</h2>
+        <button className="icon-btn" onClick={onClose} aria-label="Close"><Icon name="x" /></button>
+      </div>
+      <div className="sheet-body">
+        <p className="muted small">Untick anything you already have.</p>
+        <div className="row gap-sm">
+          <button className="rp-link small u" onClick={() => setKeep(lines.map(() => true))}>Select all</button>
+          <button className="rp-link small u" onClick={() => setKeep(lines.map(() => false))}>Select none</button>
+        </div>
+        <ul className="shop-items">
+          {lines.map((l, i) => (
+            <li key={i}>
+              <button className={`cook-ing ${keep[i] ? "on" : ""}`} aria-pressed={keep[i]} onClick={() => setKeep((k) => k.map((v, j) => (j === i ? !v : v)))}>
+                <span className="cook-check">{keep[i] && <Icon name="check" size={14} />}</span>
+                <span className="shop-name">{l}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="sheet-foot">
+        {onList ? <button className="btn btn-ghost" onClick={() => onDone(null)}>Remove from list</button> : <span />}
+        <button className="btn btn-primary" onClick={() => onDone(keep)} disabled={n === 0 && !onList}>
+          <Icon name="cart" size={16} /> {n === 0 ? "Remove from list" : onList ? `Update list (${n})` : `Add ${n} ${n === 1 ? "item" : "items"}`}
+        </button>
+      </div>
     </div>
   );
 }

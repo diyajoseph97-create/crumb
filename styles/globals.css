@@ -722,3 +722,29 @@ b, strong { font-weight: 500; } /* only 400 and 500 are loaded; no fake bold */
 .add-step .dropzone.big strong { font-weight: 500; }
 .add-head { margin-bottom: 8px; }
 .add .add-actions { margin-top: 8px; }
+/* ---------- Round 7 ---------- */
+/* Sort by */
+.dd-prefix { color: var(--ink-2); margin-right: -2px; }
+.sort .dd-trigger:hover .dd-prefix, .sort.open .dd-trigger .dd-prefix { color: inherit; opacity: 0.7; }
+/* Cart next to Ingredients */
+.rp-h-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.rp-h-row .rp-h { margin: 0; }
+.cart-btn { position: relative; border: 1.5px solid var(--ink); }
+.cart-btn .icon { stroke-width: 1.7; }
+.cart-btn:hover, .cart-btn.on { background: var(--ink); color: var(--bg); }
+.cart-tick { position: absolute; top: -4px; right: -4px; width: 18px; height: 18px; border-radius: 50%; background: var(--bg); color: var(--ink); border: 1.5px solid var(--ink); display: grid; place-items: center; }
+/* Shopping list: × for things you already have */
+.shop-row { display: flex; align-items: center; gap: 4px; }
+.shop-row .cook-ing { flex: 1; min-width: 0; }
+.shop-x { color: var(--ink-2); flex-shrink: 0; }
+.shop-x:hover { color: var(--ink); }
+.shop-pick .sheet-body > .row { margin: 4px 0 8px; }
+/* Add window: From link / From screenshots */
+.seg { display: grid; grid-template-columns: 1fr 1fr; border: 1.5px solid var(--ink); border-radius: 999px; padding: 3px; gap: 3px; margin: 4px 0 4px; }
+.seg button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; border-radius: 999px; font-size: var(--small); font-weight: 500; }
+.seg button .icon { stroke-width: 1.8; }
+.seg button.on { background: var(--ink); color: var(--bg); }
+.seg button:not(.on):hover { background: var(--soft); }
+/* Picker: ticked = add it (no strike-through); unticked = already have it */
+.shop-pick .cook-ing.on, .shop-pick .cook-ing.on .shop-name { text-decoration: none !important; opacity: 1; color: var(--ink); }
+.shop-pick .cook-ing:not(.on) .shop-name { color: var(--ink-3); }

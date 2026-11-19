@@ -478,7 +478,6 @@ textarea.input { padding: 10px 12px; resize: vertical; line-height: 1.5; }
 .rp-label { display: grid; grid-template-columns: minmax(0, 1fr) auto; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--ink); }
 .rp-label-main { padding: 14px 16px 16px 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .rp-label-main:only-child { padding-right: 0; }
-.rp-about .rp-by { margin-top: -10px; }
 
 /* The facts as a printed label: black rules, divided cells, pixel icons */
 .facts { border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink); }
@@ -616,3 +615,38 @@ b, strong { font-weight: 500; } /* only 400 and 500 are loaded; no fake bold */
 .canon, .canon input, .sugg-mark, .setup-card .muted, .setup-card p { font-size: var(--small); }
 .setup-card > p.muted { font-size: var(--body); }
 @media (max-width: 640px) { .btn.add-btn { font-size: 20px; } }
+
+/* ---------- Round 4 ---------- */
+/* Back link: small, no bar */
+.rp-top { display: flex; justify-content: space-between; align-items: center; padding-top: 24px; }
+.rp-back { font-size: var(--small); color: var(--ink-2); padding: 4px 0; }
+.rp-back:hover { color: var(--ink); text-decoration: underline; }
+.rp-grid { padding-top: 16px; }
+/* Creator line sits evenly between the title rule and the label */
+.rp-about .rp-by { margin: -8px 0; }
+/* "⋯" menu */
+.menu { position: relative; margin-left: auto; flex-shrink: 0; }
+.menu-trigger { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: var(--ink); }
+.menu-trigger:hover, .menu-trigger[aria-expanded="true"] { background: var(--soft); }
+.menu-list, .dd-list { position: absolute; z-index: 40; top: calc(100% + 6px); right: 0; min-width: 220px; margin: 0; padding: 6px 0; list-style: none; background: var(--bg); border: 1.5px solid var(--ink); animation: pop-up 0.15s var(--ease); }
+.menu-list button { display: block; width: 100%; text-align: left; padding: 10px 16px; font-size: var(--body); }
+.menu-list button:hover, .menu-list button:focus-visible { background: var(--soft); outline: 0; }
+.menu-list button.danger { color: var(--danger); }
+/* Product dropdown (sort, "which Reel") */
+.dd { position: relative; }
+.dd-trigger { display: inline-flex; align-items: center; gap: 8px; padding: 8px 0; font: inherit; letter-spacing: inherit; text-transform: inherit; }
+.dd-arrow { transition: transform 0.15s; }
+.dd.open .dd-arrow { transform: rotate(180deg); }
+.dd-list li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 16px; font-size: var(--body); letter-spacing: 0; text-transform: none; cursor: pointer; white-space: nowrap; }
+.dd-list li.active { background: var(--soft); }
+.dd-list li.on::after { content: "✓"; }
+.sort { gap: 0; }
+.dd-field .dd-trigger { width: 100%; justify-content: space-between; min-height: 44px; padding: 0 12px; border: 1px solid var(--rule); font-size: var(--body); text-align: left; }
+.dd-field.open .dd-trigger, .dd-field .dd-trigger:focus-visible { border-color: var(--ink); }
+.dd-field .dd-list { left: 0; right: 0; }
+/* Meal row: the same space above and below */
+.search { margin-bottom: 0; }
+.quick-cats { padding: 24px 0; }
+.coll-row { padding: 16px 0; }
+.menu-list.up { top: auto; bottom: calc(100% + 6px); }
+.rp-about .rp-by { margin: -8px 0; }

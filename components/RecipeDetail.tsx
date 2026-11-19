@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
 import type { Recipe } from "@/lib/types";
 import { formatMinutes, missingParts, isIncomplete, totalIsPartial, totalMinutes } from "@/lib/recipe-utils";
 import { scaleFactor, scaleLine, splitIngredient } from "@/lib/scale";
-import { ConfirmDialog, Icon, PixelIcon, Stamp, useViewOnly } from "./ui";
+import { ConfirmDialog, Icon, OverflowMenu, PixelIcon, Stamp, dietIcon, useViewOnly } from "./ui";
 import { RecipeImage } from "./RecipeImage";
 
 type Props = {
@@ -133,18 +133,12 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
 
   return (
     <article className="rp">
-      <nav className="rp-bar" aria-label="Recipe">
-        {!view.singleRecipe ? (
-          <button className="rp-link" onClick={onBack}>← All recipes</button>
-        ) : <span />}
-        <div className="rp-bar-links">
-          {view.on ? <span className="rp-viewonly">View only</span> : <>
-            {onShare && <button className="rp-link" onClick={onShare} title="Share a view-only link">Share</button>}
-            <button className="rp-link" onClick={onEdit} aria-label="Edit recipe">Edit</button>
-            <button className="rp-link" onClick={() => setConfirm(true)} aria-label="Delete recipe">Delete</button>
-          </>}
+      {(!view.singleRecipe || view.on) && (
+        <div className="rp-top">
+          {!view.singleRecipe ? <button className="rp-back" onClick={onBack} aria-label="Back to all recipes">← All recipes</button> : <span />}
+          {view.on && <span className="rp-viewonly">View only</span>}
         </div>
-      </nav>
+      )}
 
       {fillJob ? (
         <section className="notice">
@@ -180,7 +174,7 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
         <aside className="rp-about">
           <div className={`rp-photo ${r.imageUrl ? "" : "no-photo"}`}>
             <RecipeImage recipe={r} variant="hero" />
-            {stampText && <Stamp text={stampText} size={104} className="rp-stamp" />}
+            {stampText && <Stamp text={stampText} size={104} className="rp-stamp" icon={dietIcon(r.tags[0])} />}
             {!r.imageUrl && onSetPhoto && !view.on && (
               <label className="btn btn-outline btn-sm add-photo">
                 Add a photo
@@ -243,9 +237,15 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
             <button className="rp-link u" onClick={toggleList} aria-pressed={onList}>{onList ? "On your list ✓" : "Add to list"}</button>
             <Collections value={r.collections ?? []} all={allCollections} onChange={!view.on && onUpdate ? (c) => onUpdate({ collections: c }) : undefined} />
             {!view.on && (
-              <button className={`heart-btn fav-toggle ${r.favourite ? "on" : ""}`} onClick={onFavourite} aria-pressed={r.favourite} aria-label={r.favourite ? "Remove from favourites" : "Add to favourites"}>
-                <Icon name="heart" size={18} filled={r.favourite} />
-              </button>
+              <OverflowMenu
+                label="More actions for this recipe"
+                items={[
+                  { label: r.favourite ? "Remove from favourites" : "Add to favourites", onSelect: onFavourite, pressed: r.favourite },
+                  ...(onShare ? [{ label: "Share a view-only link", onSelect: onShare }] : []),
+                  { label: "Edit recipe", onSelect: onEdit },
+                  { label: "Delete recipe", onSelect: () => setConfirm(true), danger: true },
+                ]}
+              />
             )}
           </div>
           <CollectionChips value={r.collections ?? []} onChange={!view.on && onUpdate ? (c) => onUpdate({ collections: c }) : undefined} />

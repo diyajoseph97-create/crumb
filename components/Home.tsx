@@ -6,7 +6,7 @@ import type { Recipe } from "@/lib/types";
 import { activeFilterCount, allIngredients, applyFilters, EMPTY_FILTERS, type Filters } from "@/lib/filter";
 import { displayName } from "@/lib/synonyms";
 import { isSavedForLater, isYouTube, totalMinutes } from "@/lib/recipe-utils";
-import { Icon, Modal, useViewOnly } from "./ui";
+import { Dropdown, Icon, Modal, useViewOnly } from "./ui";
 import { FilterPanel } from "./FilterPanel";
 import { JobCard, RecipeCard } from "./RecipeCard";
 import { Masonry } from "./Masonry";
@@ -19,7 +19,7 @@ const SORTS: { value: Sort; label: string }[] = [
   { value: "recent", label: "Recently added" },
   { value: "az", label: "A–Z" },
   { value: "quickest", label: "Quickest first" },
-  { value: "favourites", label: "Favourites" },
+  { value: "favourites", label: "Favourites first" },
   { value: "made", label: "Most made" },
 ];
 function sortRecipes(list: Recipe[], sort: Sort): Recipe[] {
@@ -150,15 +150,6 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
       <section className="browse" aria-labelledby="whats-cooking">
         <div className="home-top">
           <h1 className="home-title px" id="whats-cooking">{filters.favourites ? "Favourites" : "What's cooking?"}</h1>
-          <p className="home-intro">
-            {viewOnly
-              ? "A cookbook shared with you. Browse, search and open any recipe; nothing you do changes it."
-              : filters.favourites
-                ? "The ones worth making again."
-                : recipes.length
-                  ? `${recipes.length} ${recipes.length === 1 ? "recipe" : "recipes"} saved from Instagram and YouTube. Search by name, ingredient or craving.`
-                  : "Save recipes from Instagram and YouTube, then find them here by name, ingredient or craving."}
-          </p>
         </div>
         <label className="search">
           <span className="search-arrow px" aria-hidden="true">→</span>
@@ -187,13 +178,7 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
           <button className={`quick-cat filters-toggle ${sheetCount ? "on" : ""}`} onClick={() => setSheet(true)}>
             Filters{sheetCount ? ` (${sheetCount})` : " +"}
           </button>
-          <label className="sort">
-            <span className="sr-only">Sort recipes</span>
-            <select value={sort} onChange={(e) => setSort((e.target as HTMLSelectElement).value as Sort)} aria-label="Sort recipes">
-              {SORTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
-            <span aria-hidden="true">↓</span>
-          </label>
+          <Dropdown className="sort" label="Sort recipes" value={sort} options={SORTS} onChange={(v) => setSort(v as Sort)} />
         </div>
 
         {collections.length > 0 && (

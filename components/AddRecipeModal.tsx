@@ -3,7 +3,7 @@ import type { ImportResult, Recipe } from "@/lib/types";
 import type { Store } from "@/lib/store";
 import { canonicalInstagramUrl, emptyDraft, instagramShortcode, isSavedForLater, isYouTube, SOURCE_LINK } from "@/lib/recipe-utils";
 import type { ImportInput } from "@/lib/importer";
-import { Doodle, Icon, Modal } from "./ui";
+import { Doodle, Dropdown, Icon, Modal } from "./ui";
 
 type Props = {
   open: boolean;
@@ -209,18 +209,20 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
             </div>
 
             {!fillProp && saved.length > 0 && files.length > 0 && !url && (
-              <label className="field which-reel">
-                <span className="field-label">Which Reel is this video from?</span>
-                <select className="input" value={target} onChange={(e) => setTarget(e.target.value)}>
-                  {saved.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      Saved Reel · {new Date(r.createdAt).toLocaleString([], { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
-                    </option>
-                  ))}
-                  <option value="new">None of these, make a new recipe</option>
-                </select>
+              <div className="field which-reel">
+                <span className="field-label" id="which-reel-l">Which Reel is this video from?</span>
+                <Dropdown
+                  className="dd-field"
+                  label="Which Reel is this video from?"
+                  value={target}
+                  onChange={setTarget}
+                  options={[
+                    ...saved.map((r) => ({ value: r.id, label: `Saved Reel · ${new Date(r.createdAt).toLocaleString([], { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}` })),
+                    { value: "new", label: "None of these, make a new recipe" },
+                  ]}
+                />
                 <span className="hint">crumbs fills in the saved Reel and keeps its link.</span>
-              </label>
+              </div>
             )}
 
             {!fillRecipe && (

@@ -2,7 +2,7 @@ import { memo, useState } from "react";
 import type { Recipe } from "@/lib/types";
 import { formatMinutes, isIncomplete, isYouTube, totalMinutes } from "@/lib/recipe-utils";
 import type { ImportJob } from "@/lib/importer";
-import { Plate } from "./Porcelain";
+import { Composition } from "./Shapes";
 import { Icon, useViewOnly } from "./ui";
 import { RecipeImage } from "./RecipeImage";
 
@@ -68,7 +68,7 @@ export function JobCard({ job, onRetry, onDismiss }: { job: ImportJob; onRetry: 
     <article className={`card job-card ${failed ? "is-failed" : "is-adding"}`} aria-live="polite">
       <div className="card-media">
         <div className="job-media">
-          {job.thumb && thumbOk ? <img src={job.thumb} alt="" className="job-thumb" onError={() => setThumbOk(false)} /> : <Plate rim="floral" className="ph-plate" />}
+          {job.thumb && thumbOk ? <img src={job.thumb} alt="" className="job-thumb" onError={() => setThumbOk(false)} /> : <Composition seed={7} ratio={0.75} className="job-art" />}
           {!failed && <span className="job-shimmer" aria-hidden="true" />}
         </div>
       </div>

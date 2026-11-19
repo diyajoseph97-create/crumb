@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ImportResult, Recipe } from "@/lib/types";
 import type { Store } from "@/lib/store";
 import { canonicalInstagramUrl, emptyDraft, instagramShortcode, isSavedForLater, isYouTube, SOURCE_LINK } from "@/lib/recipe-utils";
@@ -48,7 +48,8 @@ export function AddRecipeModal({ open, onClose, store, recipes, geminiKey, fillR
   const [target, setTarget] = useState<string>("new");
   const fillRecipe = fillProp ?? (target !== "new" ? saved.find((r) => r.id === target) ?? null : null);
 
-  useEffect(() => {
+  // Reset before the window is shown, so nothing typed straight away is wiped.
+  useLayoutEffect(() => {
     if (!open) return;
     setPhase({ kind: "form" });
     setError(null);

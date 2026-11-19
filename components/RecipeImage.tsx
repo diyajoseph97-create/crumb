@@ -1,5 +1,5 @@
 import type { Recipe } from "@/lib/types";
-import { Plate, Chopsticks, rimFor } from "./Porcelain";
+import { Composition } from "./Shapes";
 
 const ASPECTS = [1.25, 0.9, 1.1, 1.4, 1, 1.2, 0.85];
 
@@ -21,16 +21,10 @@ export function RecipeImage({ recipe, variant = "card" }: { recipe: Recipe; vari
     // still loading the photo: keep the space so the gallery doesn't jump
     return <div className={`placeholder ph-loading rimg-${variant}`} style={variant === "card" ? { aspectRatio: `1 / ${aspect}` } : undefined} aria-label="Loading photo" />;
   }
-  // No photo yet: an empty porcelain plate, waiting to be filled.
+  // No photo yet: a flat modernist composition in this recipe's colours.
   return (
-    <div
-      className={`placeholder rimg-${variant}`}
-      style={variant === "card" ? { aspectRatio: `1 / ${aspect}` } : undefined}
-      role="img"
-      aria-label={`No photo yet for ${recipe.name}`}
-    >
-      <Plate rim={rimFor(h)} deep={h % 3 === 0} className="ph-plate" style={{ transform: `rotate(${(h % 40) - 20}deg)` }} />
-      {h % 2 === 0 && <Chopsticks className="ph-chop" style={{ transform: `rotate(${18 + (h % 20)}deg)` }} />}
+    <div className={`placeholder rimg-${variant}`} style={variant === "card" ? { aspectRatio: `1 / ${aspect}` } : undefined} role="img" aria-label={`No photo yet for ${recipe.name}`}>
+      <Composition seed={h} ratio={variant === "card" ? aspect : 0.33} />
     </div>
   );
 }

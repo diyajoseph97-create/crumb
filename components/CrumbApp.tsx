@@ -16,7 +16,6 @@ import { onRemoteChanges, onSyncStatus, getSyncStatus, type SyncStatus } from "@
 import { forgetJob, newJob, runImport, saveJob, savedJobs, type ImportInput, type ImportJob } from "@/lib/importer";
 import { isSavedForLater, isYouTube } from "@/lib/recipe-utils";
 import { Doodle, Icon, Modal, ViewOnlyContext } from "./ui";
-import { BlobButton, CircleBadge } from "./Stickers";
 
 // Simple page routing using the part of the URL after "#":
 //   (none)        library
@@ -438,39 +437,34 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
           <span className="wordmark-title">{viewOnly ? viewOnly.title : "Crumb's Cookbook"}</span>
           <span className="wordmark-sub">{viewOnly ? "Shared with you · view only" : "A little home for all your saved recipes."}</span>
         </button>
-        {viewOnly && (
-          <button className="settings-link list-link" onClick={() => setShopOpen(true)}>
-            List{shopCount ? ` (${shopCount})` : ""} <span aria-hidden="true">→</span>
+        <nav className="topnav" aria-label="Cookbook">
+          {!viewOnly && (
+            <button
+              className={`nav-link fav-link ${filters.favourites ? "on" : ""}`}
+              aria-pressed={filters.favourites}
+              onClick={() => {
+                setFilters({ ...filters, favourites: !filters.favourites });
+                go("");
+              }}
+            >
+              <Icon name="heart" size={15} filled={filters.favourites} /> <span className="nav-text">Favourites</span>
+            </button>
+          )}
+          <button className="nav-link list-link" onClick={() => setShopOpen(true)} aria-label={`Shopping list${shopCount ? `, ${shopCount} recipes` : ""}`}>
+            <Icon name="list" size={15} /> <span className="nav-text">List</span>{shopCount ? <span className="nav-count">{shopCount}</span> : null}
           </button>
-        )}
-        {!viewOnly && <div className="topbar-stickers">
-          <div className="topbar-links">
-          <button className="settings-link list-link" onClick={() => setShopOpen(true)} aria-label={`Shopping list${shopCount ? `, ${shopCount} recipes` : ""}`}>
-            List{shopCount ? ` (${shopCount})` : ""} <span aria-hidden="true">→</span>
-          </button>
-          <button className="settings-link" onClick={() => setSettingsOpen(true)} aria-label="Settings">
-            Settings <span aria-hidden="true">→</span>
-            {sync.state === "paused" && <span className="sync-dot" title="Sync paused" aria-label="Sync paused" />}
-          </button>
-          </div>
-          <CircleBadge
-            className="add-btn"
-            text="ADD A RECIPE · ADD A RECIPE · "
-            center={<Icon name="plus" size={26} />}
-            onClick={() => setAdd({ open: true, fill: null, shared: null })}
-            aria-label="Add recipe"
-          />
-          <BlobButton
-            className={`fav-blob ${filters.favourites ? "on" : ""}`}
-            onClick={() => {
-              setFilters({ ...filters, favourites: !filters.favourites });
-              go("");
-            }}
-            aria-pressed={filters.favourites}
-          >
-            Favourites
-          </BlobButton>
-        </div>}
+          {!viewOnly && (
+            <button className="nav-link settings-link" onClick={() => setSettingsOpen(true)} aria-label="Settings">
+              <Icon name="gear" size={15} /> <span className="nav-text">Settings</span>
+              {sync.state === "paused" && <span className="sync-dot" title="Sync paused" aria-label="Sync paused" />}
+            </button>
+          )}
+          {!viewOnly && (
+            <button className="btn btn-accent add-btn" onClick={() => setAdd({ open: true, fill: null, shared: null })} aria-label="Add recipe">
+              <Icon name="plus" size={17} /> <span className="add-label">Add a recipe</span>
+            </button>
+          )}
+        </nav>
       </header>
       <main className="main">{body}</main>
 

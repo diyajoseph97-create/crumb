@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Dish } from "./Porcelain";
+import { Mark } from "./Shapes";
 
 // ---------- Icons (simple line icons, 24px grid) ----------
 const PATHS: Record<string, React.ReactNode> = {
@@ -54,10 +54,10 @@ export function Icon({ name, size = 20, filled = false, className = "" }: { name
   );
 }
 
-// ---------- Decorative porcelain (replaces the old food doodles) ----------
-const DOODLE_RIM: Record<string, number> = { pot: 0, bowl: 1, egg: 2, crumbs: 3, sparkle: 4, chilli: 5, leaf: 4, swirl: 2, cup: 1 };
+// ---------- Decorative mark (empty states, welcome) ----------
+const DOODLE_TONE: Record<string, number> = { pot: 0, bowl: 2, egg: 1, crumbs: 3, sparkle: 2, chilli: 4, leaf: 3, swirl: 1, cup: 5 };
 export function Doodle({ name, className = "" }: { name: string; className?: string; strokeWidth?: number }) {
-  return <Dish i={DOODLE_RIM[name] ?? 0} className={`doodle ${className}`} />;
+  return <Mark tone={DOODLE_TONE[name] ?? 0} className={`doodle ${className}`} />;
 }
 
 // ---------- Wordmark: "crumb" in an outlined pill ----------

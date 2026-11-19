@@ -7,8 +7,6 @@ import { activeFilterCount, allIngredients, applyFilters, EMPTY_FILTERS, type Fi
 import { displayName } from "@/lib/synonyms";
 import { isSavedForLater, isYouTube, totalMinutes } from "@/lib/recipe-utils";
 import { Doodle, Icon, Modal, useViewOnly } from "./ui";
-import { TableScene } from "./Porcelain";
-import { Marquee } from "./Stickers";
 import { FilterPanel } from "./FilterPanel";
 import { JobCard, RecipeCard } from "./RecipeCard";
 import { Masonry } from "./Masonry";
@@ -149,43 +147,6 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
 
   return (
     <div className="home">
-      <section className={`hero-panel ${recipes.length > 0 && !viewOnly ? "hero-compact" : ""}`}>
-        <div className="hero-copy">
-          {viewOnly ? (
-            <>
-              <p className="hero-kicker">Shared with you</p>
-              <h1 className="h-display hero-title">
-                Have a look around. <em className="script">Something's bound to tempt you.</em>
-              </h1>
-              <p className="hero-sub">You can browse, search and open every recipe here. It's view only, so nothing you do changes the cookbook.</p>
-            </>
-          ) : (
-            <>
-              <p className="hero-kicker">Your little corner of the internet</p>
-              <h1 className="h-display hero-title">
-                All those recipes you saved? <em className="script">They're right here.</em>
-              </h1>
-              <p className="hero-sub">From Instagram, YouTube and everywhere in between. Ready whenever the cooking mood strikes.</p>
-            </>
-          )}
-          {recipes.length > 0 && (
-            <p className="hero-count">
-              {recipes.length} {recipes.length === 1 ? "recipe" : "recipes"} {viewOnly ? "in this cookbook." : "tucked into your cookbook."}
-            </p>
-          )}
-        </div>
-        <TableScene className="hero-art" />
-      </section>
-
-      <Marquee
-        items={[
-          "Save it. Find it. Make it.", "A good recipe is too good to lose.",
-          "Save it. Find it. Make it.", "Less scrolling, more cooking.",
-          "Save it. Find it. Make it.", "Your saved posts, finally organised.",
-          "Save it. Find it. Make it.", "From your feed to your kitchen.",
-        ]}
-      />
-
       <section className="browse" aria-labelledby="whats-cooking">
         <h2 className="section-title" id="whats-cooking">What's cooking?</h2>
         <label className="search">

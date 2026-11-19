@@ -345,7 +345,7 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
               <ol className="mag-steps">
                 {r.steps.map((s, i) => (
                   <li key={i}>
-                    <span className="mag-step-label">Step {i + 1}.</span> <span className="mag-step-text">{s}</span>
+                    <span className="mag-step-label"><span className="sr-only">Step </span>{String(i + 1).padStart(2, "0")}</span> <span className="mag-step-text">{s}</span>
                   </li>
                 ))}
               </ol>

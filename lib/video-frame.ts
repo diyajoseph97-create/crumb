@@ -2,7 +2,7 @@ import { drawFrame } from "./image";
 
 // Grabs one frame from a video file as a small photo, used as the recipe photo
 // (the AI picks the moment that best shows the finished dish).
-export async function captureFrame(file: File, seconds: number): Promise<string | null> {
+export async function captureFrame(file: File, seconds: number, box?: [number, number, number, number] | null): Promise<string | null> {
   const url = URL.createObjectURL(file);
   try {
     const video = document.createElement("video");
@@ -21,7 +21,7 @@ export async function captureFrame(file: File, seconds: number): Promise<string 
       video.onseeked = () => res();
       setTimeout(() => rej(new Error("timeout")), 15000);
     });
-    return drawFrame(video);
+    return drawFrame(video, box);
   } catch {
     return null;
   } finally {

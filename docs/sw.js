@@ -19,7 +19,7 @@ function save(item, key = "latest") {
 }
 
 // Offline copy of the app. The build stamps a new version on every deploy.
-const CACHE = "crumb-adbedd9815";
+const CACHE = "crumb-3228d7a33b";
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) =>

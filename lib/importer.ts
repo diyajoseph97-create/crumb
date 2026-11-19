@@ -54,7 +54,7 @@ export async function runImport(job: ImportInput, deps: { apiKey: string; store:
   const video = job.files.find((f) => f.type.startsWith("video/"));
   let imageUrl: string | null = null;
   if (video && result.heroFrameSeconds != null && !existing?.imageUrl) {
-    const frame = await captureFrame(video, result.heroFrameSeconds);
+    const frame = await captureFrame(video, result.heroFrameSeconds, result.dishBox);
     if (frame) imageUrl = await store.uploadImage(frame).catch(() => null);
   }
   const ytId = youtubeVideoId(ytUrl);

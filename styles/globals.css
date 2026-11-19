@@ -21,6 +21,7 @@
   --soft: #f0efea;    /* quiet panels */
   --photo: #e9e8e3;   /* empty photo */
   --danger: #a8281f;
+  --red: #d2232a;      /* the one colour: recipe numbers */
   --font: "Geist", "Helvetica Neue", Arial, sans-serif;
   --font-px: "Geist Pixel", ui-monospace, monospace;
   --pad: clamp(16px, 5vw, 72px);
@@ -468,4 +469,53 @@ textarea.input { padding: 10px 12px; resize: vertical; line-height: 1.5; }
   .overlay:not(.overlay-sheet) { place-items: end center; padding: 0; }
   .modal-dialog { max-height: 92vh; border-bottom: 0; }
   .cook-nav .btn { min-width: 0; flex: 1; }
+}
+
+/* =========================================================
+   Label details: recipe numbers, label grid, pixel icons, stamps, dithered photos
+   ========================================================= */
+/* Photos on cards: black-and-white dots, colour on hover */
+.card-media .rimg-card { filter: grayscale(1) contrast(1.05); transition: filter 0.25s; }
+.rimg-dots { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; transition: opacity 0.25s; pointer-events: none; }
+.card:hover .rimg-dots, .card-hit:focus-visible .rimg-dots { opacity: 0; }
+.card:hover .rimg-card, .card-hit:focus-visible .rimg-card { filter: none; }
+@media (hover: none) { .card:hover .rimg-dots { opacity: 1; } .card:hover .rimg-card { filter: grayscale(1) contrast(1.05); } }
+.card-no { position: absolute; left: 0; top: 0; background: var(--bg); color: var(--red); font-size: 17px; line-height: 1; padding: 5px 8px 6px 0; -webkit-text-stroke: 0.03em var(--red); }
+
+/* Recipe page: ruled title with the number cell */
+.rp-label { display: grid; grid-template-columns: minmax(0, 1fr) auto; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--ink); }
+.rp-label-main { padding: 14px 16px 16px 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.rp-label-main:only-child { padding-right: 0; }
+.rp-no { border-left: 1px solid var(--ink); padding: 14px 0 14px 16px; display: flex; flex-direction: column; justify-content: space-between; gap: 8px; }
+.rp-no-label { font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.2; }
+.rp-no-num { font-size: clamp(40px, 4vw, 54px); line-height: 1; color: var(--red); -webkit-text-stroke: 0.03em var(--red); }
+.rp-about .rp-by { margin-top: -10px; }
+
+/* The facts as a printed label: black rules, divided cells, pixel icons */
+.facts { border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink); }
+.facts-row { padding: 0; border-top: 1px solid var(--ink); }
+.facts-row > div { padding: 12px 14px; }
+.facts-row:not(.facts-3) > div { padding-left: 0; }
+.facts-3 { gap: 0; }
+.facts-3 > div { border-left: 1px solid var(--ink); }
+.facts-3 > div:first-child { border-left: 0; padding-left: 0; }
+.facts dt { display: flex; align-items: center; gap: 7px; color: var(--ink); }
+.facts dd { font-size: 15px; letter-spacing: 0.04em; text-transform: uppercase; }
+.facts .facts-small { font-size: 13px; letter-spacing: 0.05em; }
+.facts .facts-soft { text-transform: none; letter-spacing: 0; }
+.picon { flex-shrink: 0; }
+
+/* Stamps */
+.stamp { display: block; color: var(--ink); overflow: visible; }
+.rp-photo { overflow: visible; }
+.rp-photo > .rimg-hero, .rp-photo > .placeholder { display: block; }
+.rp-stamp { position: absolute; right: -22px; top: -30px; z-index: 2; }
+.home-side { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.home-stamp { flex-shrink: 0; margin-bottom: 4px; }
+@media (max-width: 640px) {
+  .rp-stamp { width: 96px; height: 96px; right: -6px; top: -22px; }
+  .home-stamp { width: 84px; height: 84px; }
+  .card-no { font-size: 14px; padding: 4px 6px 5px 0; }
+  .rp-no { padding-left: 12px; }
+  .facts-3 > div { padding: 10px 8px; }
 }

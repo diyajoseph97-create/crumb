@@ -6,7 +6,7 @@ import type { Recipe } from "@/lib/types";
 import { activeFilterCount, allIngredients, applyFilters, EMPTY_FILTERS, type Filters } from "@/lib/filter";
 import { displayName } from "@/lib/synonyms";
 import { isSavedForLater, isYouTube, totalMinutes } from "@/lib/recipe-utils";
-import { Icon, Modal, useViewOnly } from "./ui";
+import { Icon, Modal, Stamp, useViewOnly } from "./ui";
 import { FilterPanel } from "./FilterPanel";
 import { JobCard, RecipeCard } from "./RecipeCard";
 import { Masonry } from "./Masonry";
@@ -150,6 +150,7 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
       <section className="browse" aria-labelledby="whats-cooking">
         <div className="home-top">
           <h1 className="home-title px" id="whats-cooking">{filters.favourites ? "Favourites" : "What's cooking?"}</h1>
+          <div className="home-side">
           <p className="home-intro">
             {viewOnly
               ? "A cookbook shared with you. Browse, search and open any recipe; nothing you do changes it."
@@ -159,6 +160,15 @@ export function Home({ recipes: all, loading, filters, setFilters, onOpen, onFav
                   ? `${recipes.length} ${recipes.length === 1 ? "recipe" : "recipes"} saved from Instagram and YouTube. Search by name, ingredient or craving.`
                   : "Save recipes from Instagram and YouTube, then find them here by name, ingredient or craving."}
           </p>
+          {recipes.length > 0 && (
+            <Stamp
+              className="home-stamp"
+              size={104}
+              rotate={8}
+              text={viewOnly ? "Shared cookbook" : `Your cookbook · since ${recipes.reduce((y, r) => Math.min(y, Number(r.createdAt.slice(0, 4)) || y), new Date().getFullYear())}`}
+            />
+          )}
+          </div>
         </div>
         <label className="search">
           <span className="search-arrow px" aria-hidden="true">→</span>

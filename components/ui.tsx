@@ -135,3 +135,54 @@ import { createContext, useContext } from "react";
 export type ViewOnlyInfo = { on: boolean; singleRecipe?: boolean };
 export const ViewOnlyContext = createContext<ViewOnlyInfo>({ on: false });
 export const useViewOnly = () => useContext(ViewOnlyContext);
+
+// ---------- Recipe numbers: No. 001 is the first recipe you saved ----------
+// Worked out from the order recipes were saved, so every device shows the same numbers.
+export const NumbersContext = createContext<Map<string, number>>(new Map());
+export function useRecipeNumber(id: string): string | null {
+  const n = useContext(NumbersContext).get(id);
+  return n ? String(n).padStart(3, "0") : null;
+}
+export function numberRecipes(recipes: { id: string; createdAt: string }[]): Map<string, number> {
+  const sorted = [...recipes].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+  return new Map(sorted.map((r, i) => [r.id, i + 1]));
+}
+
+// ---------- Pixel icons (8×8, drawn like the pixel type) ----------
+const PIXELS: Record<string, string[]> = {
+  pot: ["........", "..####..", "########", ".#....#.", ".#....#.", ".#....#.", "..####..", "........"],
+  flame: ["...#....", "...##...", "..###...", "..####.#", ".#####.#", ".#######", "########", ".######."],
+  clock: ["..####..", ".#....#.", "#...#..#", "#...#..#", "#...###.", "#......#", ".#....#.", "..####.."],
+  bowl: ["........", "........", "########", "########", ".######.", "..####..", "...##...", "........"],
+  check: ["........", ".......#", "......##", "#....##.", "##..##..", ".####...", "..##....", "........"],
+};
+export function PixelIcon({ name, size = 12 }: { name: keyof typeof PIXELS | string; size?: number }) {
+  const rows = PIXELS[name] ?? [];
+  return (
+    <svg className="picon" viewBox="0 0 8 8" width={size} height={size} fill="currentColor" shapeRendering="crispEdges" aria-hidden="true">
+      {rows.flatMap((row, y) => [...row].map((ch, x) => (ch === "#" ? <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" /> : null)))}
+    </svg>
+  );
+}
+
+// ---------- Round stamp with text running around it ----------
+let stampSeq = 0;
+export function Stamp({ text, size = 120, rotate = -10, className = "" }: { text: string; size?: number; rotate?: number; className?: string }) {
+  const id = `ring${++stampSeq}`;
+  // Repeat the words so they go all the way round.
+  let ring = `${text.toUpperCase()} · `;
+  while (ring.length < 38) ring += `${text.toUpperCase()} · `;
+  return (
+    <svg className={`stamp ${className}`} viewBox="0 0 120 120" width={size} height={size} style={{ transform: `rotate(${rotate}deg)` }} role="img" aria-label={text}>
+      <defs><path id={id} d="M60,60 m-44,0 a44,44 0 1,1 88,0 a44,44 0 1,1 -88,0" /></defs>
+      <circle cx="60" cy="60" r="57" fill="var(--bg)" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="60" cy="60" r="33" fill="none" stroke="currentColor" strokeWidth="1" />
+      <text fontSize={ring.length > 46 ? 9 : 10.5} fontWeight="500" letterSpacing={ring.length > 46 ? 1.4 : 2.2} fill="currentColor" style={{ fontFamily: "var(--font)" }} textLength="270" lengthAdjust="spacing">
+        <textPath href={`#${id}`}>{ring}</textPath>
+      </text>
+      <g fill="currentColor" shapeRendering="crispEdges">
+        <rect x="44" y="62" width="9" height="9" /><rect x="57" y="52" width="7" height="7" /><rect x="68" y="64" width="5" height="5" />
+      </g>
+    </svg>
+  );
+}

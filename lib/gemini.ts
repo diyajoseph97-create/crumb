@@ -141,7 +141,8 @@ const SCHEMA = {
       description: "Rough estimate per serving; null unless ingredient amounts and servings are known",
       properties: { calories: nullableNum, protein_g: nullableNum, carbs_g: nullableNum, fat_g: nullableNum, fibre_g: nullableNum },
     },
-    hero_frame_seconds: { ...nullableNum, description: "If a video was given: the time (seconds) of the clearest shot of the FINISHED dish, with no text overlay if possible. null if none." },
+    hero_frame_seconds: { ...nullableNum, description: "If a video was given: the time (seconds) of the clearest, best-lit shot of the FINISHED dish. Prefer a moment with no on-screen text or captions, no hands, no faces and no packaging. null if none." },
+    dish_box: { type: "ARRAY", items: { type: "INTEGER" }, nullable: true, description: "For the frame at hero_frame_seconds: the box around the plated dish as [ymin, xmin, ymax, xmax], each 0-1000. null if unsure." },
     notes: { type: "STRING", description: "One or two short sentences about anything missing or unclear. Empty if nothing to note." },
   },
   required: ["is_recipe", "name", "ingredients", "steps", "prep_minutes", "cook_minutes", "times_estimated", "servings", "servings_estimated", "cuisines", "meals", "diet_tags", "notes"],
@@ -157,7 +158,8 @@ export type ReadInput = {
   onStage?: (stage: "upload" | "read" | "busy") => void;
 };
 
-export type ReadResult = { draft: Partial<RecipeDraft>; isRecipe: boolean; notes: string; heroFrameSeconds: number | null; usedVideo: boolean };
+export type DishBox = [number, number, number, number];
+export type ReadResult = { draft: Partial<RecipeDraft>; isRecipe: boolean; notes: string; heroFrameSeconds: number | null; dishBox: DishBox | null; usedVideo: boolean };
 
 function friendlyError(e: unknown): Error {
   const msg = e instanceof Error ? e.message : String(e);
@@ -306,6 +308,7 @@ export function toResult(o: any, usedVideo: boolean): ReadResult {
     isRecipe: o.is_recipe !== false,
     notes: typeof o.notes === "string" ? o.notes.slice(0, 600) : "",
     heroFrameSeconds: typeof o.hero_frame_seconds === "number" && o.hero_frame_seconds >= 0 ? o.hero_frame_seconds : null,
+    dishBox: cleanBox(o.dish_box),
     usedVideo,
     draft: {
       name: typeof o.name === "string" ? o.name.slice(0, 200) : "",
@@ -325,6 +328,14 @@ export function toResult(o: any, usedVideo: boolean): ReadResult {
       creator: typeof o.creator === "string" && o.creator.trim() && !/^(null|unknown|n\/a)$/i.test(o.creator.trim()) ? o.creator.trim().slice(0, 80) : null,
     },
   };
+}
+
+/** A sensible dish box (0-1000 scale, [ymin, xmin, ymax, xmax]) or null. */
+function cleanBox(b: unknown): DishBox | null {
+  if (!Array.isArray(b) || b.length !== 4 || !b.every((v) => typeof v === "number" && v >= 0 && v <= 1000)) return null;
+  const [y0, x0, y1, x1] = b as number[];
+  if (y1 - y0 < 80 || x1 - x0 < 80) return null; // too small to trust
+  return [y0, x0, y1, x1];
 }
 
 /** When filling in an existing recipe: never overwrite something we already had. */

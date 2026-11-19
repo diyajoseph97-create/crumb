@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
 import type { Recipe } from "@/lib/types";
 import { formatMinutes, missingParts, isIncomplete, totalIsPartial, totalMinutes } from "@/lib/recipe-utils";
 import { scaleFactor, scaleLine, splitIngredient } from "@/lib/scale";
-import { ConfirmDialog, Icon, useViewOnly } from "./ui";
+import { ConfirmDialog, Icon, PixelIcon, Stamp, useRecipeNumber, useViewOnly } from "./ui";
 import { RecipeImage } from "./RecipeImage";
 
 type Props = {
@@ -127,6 +127,8 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
   const stepServings = (d: number) => setServings((s) => Math.max(1, Math.min(50, s + d)));
   const categories = [...r.cuisines, ...r.meals];
   const cooked = r.cookedCount ?? 0;
+  const no = useRecipeNumber(r.id);
+  const stampText = r.tags.length ? r.tags.slice(0, 3).join(" · ") : r.cuisines.filter((c) => c !== "Indian")[0] ?? r.cuisines[0] ?? "";
 
   return (
     <article className="rp">
@@ -175,36 +177,33 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
       <div className="rp-grid">
         {/* ---------- Left: about the dish (stays put while you scroll) ---------- */}
         <aside className="rp-about">
-          <div className="rp-head">
-            {categories.length > 0 && <p className="label">{categories.join(" · ")}</p>}
-            <h1 className="rp-title px">{r.name || "Untitled recipe"}</h1>
-            <p className="rp-by">
-              {r.creator && <>By <span className="rp-creator">{r.creator.startsWith("@") || r.creator.includes(" ") ? r.creator : `@${r.creator}`}</span>{r.sourceUrl ? " · " : ""}</>}
-              <ReelLink url={r.sourceUrl} onSetLink={onSetLink} />
-            </p>
+          <div className="rp-label">
+            <div className="rp-label-main">
+              {categories.length > 0 && <p className="label">{categories.join(" · ")}</p>}
+              <h1 className="rp-title px">{r.name || "Untitled recipe"}</h1>
+            </div>
+            {no && (
+              <div className="rp-no">
+                <span className="rp-no-label">Recipe<br />No.</span>
+                <span className="rp-no-num px">{no}</span>
+              </div>
+            )}
           </div>
+          <p className="rp-by">
+            {r.creator && <>By <span className="rp-creator">{r.creator.startsWith("@") || r.creator.includes(" ") ? r.creator : `@${r.creator}`}</span>{r.sourceUrl ? " · " : ""}</>}
+            <ReelLink url={r.sourceUrl} onSetLink={onSetLink} />
+          </p>
 
           <dl className="facts">
             <div className="facts-row facts-3">
-              <div><dt className="label">Prep</dt><dd>{est(r.timesEstimated, r.prepMinutes)}{formatMinutes(r.prepMinutes)}</dd></div>
-              <div><dt className="label">Cook</dt><dd>{est(r.timesEstimated, r.cookMinutes)}{formatMinutes(r.cookMinutes)}</dd></div>
-              <div><dt className="label">Total</dt><dd>{total != null ? <>{est(r.timesEstimated, total)}{formatMinutes(total)}{totalIsPartial(r) ? "+" : ""}</> : "—"}</dd></div>
+              <div><dt className="label"><PixelIcon name="pot" />Prep</dt><dd>{est(r.timesEstimated, r.prepMinutes)}{formatMinutes(r.prepMinutes)}</dd></div>
+              <div><dt className="label"><PixelIcon name="flame" />Cook</dt><dd>{est(r.timesEstimated, r.cookMinutes)}{formatMinutes(r.cookMinutes)}</dd></div>
+              <div><dt className="label"><PixelIcon name="clock" />Total</dt><dd>{total != null ? <>{est(r.timesEstimated, total)}{formatMinutes(total)}{totalIsPartial(r) ? "+" : ""}</> : "—"}</dd></div>
             </div>
-            {(r.tags.length > 0 || r.suggestedTags.length > 0) && (
-              <div className="facts-row">
-                <div>
-                  <dt className="label">Diet</dt>
-                  <dd>
-                    {r.tags.join(" · ")}
-                    {r.suggestedTags.length > 0 && <span className="facts-soft" title="Suggested, not confirmed yet. Edit the recipe to confirm.">{r.tags.length ? " · " : ""}{r.suggestedTags.map((t) => `${t}?`).join(" · ")}</span>}
-                  </dd>
-                </div>
-              </div>
-            )}
             {hasNutrition && (
               <div className="facts-row">
                 <div>
-                  <dt className="label">Per serving, roughly</dt>
+                  <dt className="label"><PixelIcon name="bowl" />Per serving, roughly</dt>
                   <dd className="facts-small">
                     {([[n!.calories, " kcal"], [n!.protein, " g protein"], [n!.carbs, " g carbs"], [n!.fat, " g fat"], [n!.fibre, " g fibre"]] as const)
                       .filter(([v]) => v != null).map(([v, u]) => `${v}${u}`).join(" · ")}
@@ -212,10 +211,18 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
                 </div>
               </div>
             )}
+            {r.suggestedTags.length > 0 && !view.on && (
+              <div className="facts-row">
+                <div>
+                  <dt className="label">Might also be</dt>
+                  <dd className="facts-small facts-soft" title="Suggested, not confirmed yet. Edit the recipe to confirm.">{r.suggestedTags.join(" · ")}</dd>
+                </div>
+              </div>
+            )}
             {cooked > 0 && (
               <div className="facts-row">
                 <div>
-                  <dt className="label">Made</dt>
+                  <dt className="label"><PixelIcon name="check" />Made</dt>
                   <dd className="facts-made">
                     {cooked} {cooked === 1 ? "time" : "times"}{r.lastCookedAt ? ` · last ${new Date(r.lastCookedAt).toLocaleDateString([], { day: "numeric", month: "short" })}` : ""}
                     {r.rating ? <Stars value={r.rating} size={14} /> : null}
@@ -234,6 +241,7 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
 
           <div className={`rp-photo ${r.imageUrl ? "" : "no-photo"}`}>
             <RecipeImage recipe={r} variant="hero" />
+            {stampText && <Stamp text={stampText} size={140} className="rp-stamp" />}
             {!r.imageUrl && onSetPhoto && !view.on && (
               <label className="btn btn-outline btn-sm add-photo">
                 Add a photo

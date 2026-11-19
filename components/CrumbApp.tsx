@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Recipe, RecipeDraft } from "@/lib/types";
 import type { Store } from "@/lib/store";
 import { EMPTY_FILTERS, type Filters } from "@/lib/filter";
@@ -15,7 +15,7 @@ import { ShoppingList, useShoppingCount } from "./ShoppingList";
 import { onRemoteChanges, onSyncStatus, getSyncStatus, type SyncStatus } from "@/lib/sync";
 import { forgetJob, newJob, runImport, saveJob, savedJobs, type ImportInput, type ImportJob } from "@/lib/importer";
 import { isSavedForLater, isYouTube, youtubeCreator, youtubeVideoId } from "@/lib/recipe-utils";
-import { Doodle, Modal, ViewOnlyContext } from "./ui";
+import { Doodle, Modal, NumbersContext, ViewOnlyContext, numberRecipes } from "./ui";
 
 // Simple page routing using the part of the URL after "#":
 //   (none)        library
@@ -355,6 +355,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
     toast(id ? "Changes saved" : "Recipe added to your cookbook");
   }
 
+  const numbers = useMemo(() => numberRecipes(recipes), [recipes]);
   const current = route.page === "recipe" || route.page === "edit" ? recipes.find((r) => r.id === route.id) : undefined;
 
   let body: React.ReactNode;
@@ -443,6 +444,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
 
   return (
     <ViewOnlyContext.Provider value={{ on: Boolean(viewOnly), singleRecipe: viewOnly?.singleRecipe }}>
+    <NumbersContext.Provider value={numbers}>
     <div className="app">
       <header className="topbar">
         <button className="wordmark px" onClick={() => !viewOnly?.singleRecipe && go("")} aria-label="Cookbook home">
@@ -525,6 +527,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
         <ShoppingList onClose={() => setShopOpen(false)} onOpen={(id) => { setShopOpen(false); go(`recipe-${id}`); }} />
       </Modal>
     </div>
+    </NumbersContext.Provider>
     </ViewOnlyContext.Provider>
   );
 }

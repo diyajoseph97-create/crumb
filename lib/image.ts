@@ -47,7 +47,20 @@ export async function compactPhoto(dataUrl: string): Promise<string | null> {
   return smaller.length < dataUrl.length * 0.8 ? smaller : null;
 }
 
-export function drawFrame(video: HTMLVideoElement): string | null {
-  if (!video.videoWidth || !video.videoHeight) return null;
-  return encodePhoto(draw(video, video.videoWidth, video.videoHeight, PHOTO_MAX));
+export function drawFrame(video: HTMLVideoElement, box?: [number, number, number, number] | null): string | null {
+  const W = video.videoWidth, H = video.videoHeight;
+  if (!W || !H) return null;
+  if (!box) return encodePhoto(draw(video, W, H, PHOTO_MAX));
+  // A square around the dish, with a little breathing room, kept inside the frame.
+  const [y0, x0, y1, x1] = box.map((v) => v / 1000);
+  const cx = ((x0 + x1) / 2) * W, cy = ((y0 + y1) / 2) * H;
+  let side = Math.max((x1 - x0) * W, (y1 - y0) * H) * 1.12;
+  side = Math.min(side, W, H);
+  const sx = Math.min(Math.max(0, cx - side / 2), W - side);
+  const sy = Math.min(Math.max(0, cy - side / 2), H - side);
+  const out = Math.min(900, Math.round(side));
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = out;
+  canvas.getContext("2d")!.drawImage(video, sx, sy, side, side, 0, 0, out, out);
+  return encodePhoto(canvas, 0.82);
 }

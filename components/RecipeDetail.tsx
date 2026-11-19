@@ -191,10 +191,25 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
             {categories.length > 0 && <p className="rp-kicker label">{categories.join(" · ")}</p>}
             <h1 className="rp-title px">{r.name || "Untitled recipe"}</h1>
           </div>
-          <p className="rp-by">
-            {r.creator && <><span className="rp-creator">{r.creator.startsWith("@") || r.creator.includes(" ") ? r.creator : `@${r.creator}`}</span>{r.sourceUrl ? " · " : ""}</>}
-            <ReelLink url={r.sourceUrl} onSetLink={onSetLink} />
-          </p>
+          <div className="rp-byline">
+            <p className="rp-by">
+              {r.creator && <><span className="rp-creator">{r.creator.startsWith("@") || r.creator.includes(" ") ? r.creator : `@${r.creator}`}</span>{r.sourceUrl ? " · " : ""}</>}
+              <ReelLink url={r.sourceUrl} onSetLink={onSetLink} />
+            </p>
+            <OverflowMenu
+              label="More actions for this recipe"
+              items={[
+                { label: onList ? "Remove from shopping list" : "Add to shopping list", onSelect: toggleList, pressed: onList },
+                ...(canEditColl ? [{ label: "Add to collection", onSelect: () => setAddingColl(true) }] : []),
+                ...(!view.on ? [
+                  { label: r.favourite ? "Remove from favourites" : "Add to favourites", onSelect: onFavourite, pressed: r.favourite },
+                  ...(onShare ? [{ label: "Share a view-only link", onSelect: onShare }] : []),
+                  { label: "Edit recipe", onSelect: onEdit },
+                  { label: "Delete recipe", onSelect: () => setConfirm(true), danger: true },
+                ] : []),
+              ]}
+            />
+          </div>
 
           <dl className="facts">
             <div className="facts-row facts-3">
@@ -237,19 +252,6 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
           <div className="rp-actions">
             <button className="btn btn-primary btn-lg" onClick={() => setCooking(true)}>Start cooking</button>
             {addingColl && canEditColl && <Collections value={r.collections ?? []} all={allCollections} onChange={(c) => onUpdate!({ collections: c })} onDone={() => setAddingColl(false)} />}
-            <OverflowMenu
-              label="More actions for this recipe"
-              items={[
-                { label: onList ? "Remove from shopping list" : "Add to shopping list", onSelect: toggleList, pressed: onList },
-                ...(canEditColl ? [{ label: "Add to collection", onSelect: () => setAddingColl(true) }] : []),
-                ...(!view.on ? [
-                  { label: r.favourite ? "Remove from favourites" : "Add to favourites", onSelect: onFavourite, pressed: r.favourite },
-                  ...(onShare ? [{ label: "Share a view-only link", onSelect: onShare }] : []),
-                  { label: "Edit recipe", onSelect: onEdit },
-                  { label: "Delete recipe", onSelect: () => setConfirm(true), danger: true },
-                ] : []),
-              ]}
-            />
           </div>
           <CollectionChips value={r.collections ?? []} onChange={!view.on && onUpdate ? (c) => onUpdate({ collections: c }) : undefined} />
 

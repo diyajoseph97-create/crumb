@@ -4,6 +4,7 @@ import type { Recipe, RecipeDraft } from "./types";
 import type { Store } from "./store";
 import { mergeIntoExisting, readRecipe } from "./gemini";
 import { captureFrame } from "./video-frame";
+import { cleanPhoto } from "./trim";
 import { canonicalInstagramUrl, emptyDraft, isYouTube, youtubeCreator, youtubeThumbnail, youtubeVideoId } from "./recipe-utils";
 
 export type ImportInput = {
@@ -59,6 +60,8 @@ export async function runImport(job: ImportInput, deps: { apiKey: string; store:
   }
   const ytId = youtubeVideoId(ytUrl);
   if (!imageUrl && ytId && !existing?.imageUrl) imageUrl = await youtubeThumbnail(ytId).catch(() => null);
+  // Trim the blurred side bars Instagram (and black ones YouTube Shorts) add around tall videos.
+  if (imageUrl) imageUrl = await cleanPhoto(imageUrl);
   // YouTube says who the channel is; that beats anything read from the video.
   if (ytId && !existing?.creator) {
     const channel = await youtubeCreator(ytId);

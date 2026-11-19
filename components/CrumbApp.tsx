@@ -15,6 +15,7 @@ import { ShoppingList, useShoppingCount } from "./ShoppingList";
 import { onRemoteChanges, onSyncStatus, getSyncStatus, type SyncStatus } from "@/lib/sync";
 import { forgetJob, newJob, runImport, saveJob, savedJobs, type ImportInput, type ImportJob } from "@/lib/importer";
 import { isSavedForLater, isYouTube, youtubeCreator, youtubeVideoId } from "@/lib/recipe-utils";
+import { cleanPhoto } from "@/lib/trim";
 import { Doodle, Modal, NumbersContext, ViewOnlyContext, numberRecipes } from "./ui";
 
 // Simple page routing using the part of the URL after "#":
@@ -283,6 +284,28 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route, recipes]);
 
+  // Once per photo: trim Instagram's blurred side bars off photos saved before trimming existed.
+  const trimming = useRef(false);
+  useEffect(() => {
+    if (viewOnly || loading || trimming.current) return;
+    let seen: Set<string>;
+    try { seen = new Set(JSON.parse(localStorage.getItem("crumb-trimmed") || "[]")); } catch { seen = new Set(); }
+    const todo = recipes.filter((r) => r.imageUrl && !seen.has(r.id) && (r.imageUrl.startsWith("data:image/") || r.imageUrl.startsWith("https://i.ytimg.com/")));
+    if (!todo.length) return;
+    trimming.current = true;
+    (async () => {
+      for (const r of todo) {
+        await new Promise((res) => setTimeout(res, 120)); // gently, between other work
+        const out = await cleanPhoto(r.imageUrl);
+        if (out && out !== r.imageUrl) upsert(await store.update(r.id, { imageUrl: out }));
+        seen.add(r.id);
+        try { localStorage.setItem("crumb-trimmed", JSON.stringify([...seen])); } catch {}
+      }
+      trimming.current = false;
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, recipes.length]);
+
   // Carry on with recipes that were still being added when Crumb was last closed.
   const resumed = useRef(false);
   useEffect(() => {
@@ -419,7 +442,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
         onUpdate={viewOnly ? undefined : async (patch) => upsert(await store.update(current.id, patch))}
         allCollections={allCollections}
         onSetPhoto={viewOnly ? undefined : async (dataUrl) => {
-          const url = await store.uploadImage(dataUrl);
+          const url = await store.uploadImage((await cleanPhoto(dataUrl)) ?? dataUrl);
           upsert(await store.update(current.id, { imageUrl: url }));
           toast("Photo added");
         }}
@@ -451,14 +474,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
           {viewOnly ? viewOnly.title : "crumbs"}
         </button>
         <nav className="topnav" aria-label="Cookbook">
-          {viewOnly ? <span className="nav-note">Shared with you · view only</span> : (
-            <button
-              className={`nav-link nav-recipes ${route.page === "home" && !filters.favourites ? "on" : ""}`}
-              onClick={() => { setFilters({ ...filters, favourites: false }); go(""); }}
-            >
-              Recipes
-            </button>
-          )}
+          {viewOnly && <span className="nav-note">Shared with you · view only</span>}
           {!viewOnly && (
             <button
               className={`nav-link fav-link ${filters.favourites ? "on" : ""}`}

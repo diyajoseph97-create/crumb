@@ -95,6 +95,7 @@ export function SettingsPanel({ onClose, onRestored, onKeyChange, recipes = [] }
 
   return (
     <div className="settings">
+      <button className="icon-btn modal-close" onClick={onClose} aria-label="Close settings"><Icon name="x" /></button>
       <h2 className="h-display h-md">A few little things.</h2>
       <p className="settings-intro">Make crumbs feel like your cookbook.</p>
 
@@ -145,9 +146,6 @@ export function SettingsPanel({ onClose, onRestored, onKeyChange, recipes = [] }
       </div>
 
       {msg && <p className={msg.bad ? "form-error" : "form-ok"} role="status">{msg.text}</p>}
-      <div className="settings-extra">
-        <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
-      </div>
     </div>
   );
 }

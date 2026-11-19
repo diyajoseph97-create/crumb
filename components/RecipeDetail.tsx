@@ -125,7 +125,7 @@ export function RecipeDetail({ recipe: r, onBack, onEdit, onDelete, onFavourite,
   const n = r.nutrition;
   const hasNutrition = n && Object.values(n).some((v) => v != null);
   const stepServings = (d: number) => setServings((s) => Math.max(1, Math.min(50, s + d)));
-  const categories = [...r.cuisines, ...r.meals];
+  const categories = r.cuisines.length > 1 ? r.cuisines.filter((c) => c !== "Indian") : r.cuisines;
   const cooked = r.cookedCount ?? 0;
   const no = useRecipeNumber(r.id);
   const stampText = r.tags.length ? r.tags.slice(0, 3).join(" · ") : r.cuisines.filter((c) => c !== "Indian")[0] ?? r.cuisines[0] ?? "";

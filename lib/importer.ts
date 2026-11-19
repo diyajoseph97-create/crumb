@@ -115,8 +115,8 @@ export async function runImport(job: ImportInput, deps: { apiKey: string; store:
     ...result.draft,
     name: result.draft.name || "Untitled recipe",
     imageUrl,
-    sourceUrl: job.code ? canonicalInstagramUrl(job.code) : null,
-    sourceShortcode: job.code,
+    sourceUrl: job.code ? canonicalInstagramUrl(preview?.code || job.code) : null,
+    sourceShortcode: preview?.code || job.code,
     originalCaption: caption || null,
     importNotes: notes + (igCode && !hasVideo && !result.draft.steps?.length ? " The steps weren't in the caption: add the video to fill them in." : ""),
   };
@@ -128,7 +128,7 @@ const NO_PREVIEW_NOTE = "Saved the link. Record or download the Reel, then tap â
 
 /** Keep an Instagram link (with its caption, cover and creator, if we got them) to finish later. */
 export async function saveLater(job: ImportInput, store: Store, preview: ReelPreview | null): Promise<Recipe> {
-  const code = job.code!;
+  const code = preview?.code || job.code!;
   const firstLine = preview?.caption?.split("\n").map((l) => l.trim()).find((l) => l && !l.startsWith("#"));
   let imageUrl: string | null = null;
   if (preview?.image) imageUrl = await store.uploadImage(preview.image).then(cleanPhoto).catch(() => null);

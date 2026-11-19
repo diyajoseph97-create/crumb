@@ -2,10 +2,13 @@
 // Given an Instagram Reel/post code, it reads the public embed page that Instagram
 // serves for embeds and link previews, and returns only:
 //   { caption, creator, image }   (image is a small data: URL of the cover)
-// It accepts nothing but a short code, so it can't be used to fetch other sites.
+// It accepts nothing but a short code (or an Instagram share code), so it can't be
+// used to fetch other sites.
 
 const ALLOWED_ORIGINS = ["https://diyajoseph97-create.github.io", "http://localhost:8765"];
 const CODE = /^[A-Za-z0-9_-]{5,40}$/;
+// Links from the app's Share button: instagram.com/share/reel/BAxyz… or /share/BAxyz…
+const SHARE = /^share\/(?:reel\/)?[A-Za-z0-9_-]{5,60}$/;
 
 function cors(origin: string | null) {
   return {
@@ -72,10 +75,20 @@ Deno.serve(async (req) => {
   const origin = req.headers.get("origin");
   const headers = { ...cors(origin), "Content-Type": "application/json" };
   if (req.method === "OPTIONS") return new Response("ok", { headers });
-  const code = new URL(req.url).searchParams.get("code") || "";
-  if (!CODE.test(code)) return new Response(JSON.stringify({ error: "bad code" }), { status: 400, headers });
+  let code = new URL(req.url).searchParams.get("code") || "";
+  if (!CODE.test(code) && !SHARE.test(code)) return new Response(JSON.stringify({ error: "bad code" }), { status: 400, headers });
 
   try {
+    // A share link forwards to the Reel itself: follow it to find the Reel's own code.
+    if (SHARE.test(code)) {
+      const r = await fetch(`https://www.instagram.com/${code}/`, { headers: { "User-Agent": UA, "Accept-Language": "en" }, redirect: "follow" });
+      const fromUrl = r.url.match(/instagram\.com\/(?:reel|reels|p|tv)\/([A-Za-z0-9_-]{5,40})/);
+      const page = fromUrl ? "" : await r.text();
+      const fromPage = page.match(/instagram\.com\/(?:reel|reels|p|tv)\/([A-Za-z0-9_-]{5,40})/);
+      const real = fromUrl?.[1] || fromPage?.[1];
+      if (!real) return new Response(JSON.stringify({ caption: null, creator: null, image: null, code: null }), { headers });
+      code = real;
+    }
     let html = "";
     for (const kind of ["reel", "p"]) {
       const r = await fetch(`https://www.instagram.com/${kind}/${code}/embed/captioned/`, { headers: { "User-Agent": UA, "Accept-Language": "en" }, redirect: "follow" });
@@ -87,7 +100,7 @@ Deno.serve(async (req) => {
     const { caption, creator } = readCaption(html);
     const imageUrl = readImage(html);
     const image = imageUrl ? await toDataUrl(imageUrl) : null;
-    return new Response(JSON.stringify({ caption, creator, image }), { headers: { ...headers, "Cache-Control": "public, max-age=3600" } });
+    return new Response(JSON.stringify({ caption, creator, image, code }), { headers: { ...headers, "Cache-Control": "public, max-age=3600" } });
   } catch (e) {
     return new Response(JSON.stringify({ error: String(e).slice(0, 200) }), { status: 502, headers });
   }

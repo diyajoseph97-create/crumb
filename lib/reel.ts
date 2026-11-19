@@ -3,11 +3,12 @@
 // browsers from reading it directly. Returns null if anything goes wrong.
 import { getConfig } from "./cloud";
 
-export type ReelPreview = { caption: string | null; creator: string | null; image: string | null };
+/** code: the Reel's own code, when a share link was followed to find it. */
+export type ReelPreview = { caption: string | null; creator: string | null; image: string | null; code: string | null };
 
 export async function fetchReelPreview(code: string): Promise<ReelPreview | null> {
   const cfg = getConfig();
-  if (!cfg || !/^[A-Za-z0-9_-]{5,40}$/.test(code)) return null;
+  if (!cfg || !/^(share\/(reel\/)?)?[A-Za-z0-9_-]{5,60}$/.test(code)) return null;
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), 20000);
   try {
@@ -17,7 +18,7 @@ export async function fetchReelPreview(code: string): Promise<ReelPreview | null
     });
     if (!r.ok) return null;
     const j = await r.json();
-    return { caption: j.caption || null, creator: j.creator || null, image: typeof j.image === "string" && j.image.startsWith("data:image/") ? j.image : null };
+    return { code: typeof j.code === "string" && /^[A-Za-z0-9_-]{5,40}$/.test(j.code) ? j.code : null, caption: j.caption || null, creator: j.creator || null, image: typeof j.image === "string" && j.image.startsWith("data:image/") ? j.image : null };
   } catch {
     return null;
   } finally {

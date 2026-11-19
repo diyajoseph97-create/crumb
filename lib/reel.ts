@@ -11,6 +11,7 @@ export class PreviewUnavailable extends Error {}
 
 /** Returns the preview, or throws PreviewUnavailable if it couldn't be read right now (tries twice). */
 export async function fetchReelPreview(code: string): Promise<ReelPreview> {
+  if (!getConfig()) throw new PreviewUnavailable("Sync isn't set up, so crumbs can't read Instagram captions.");
   try {
     return await fetchOnce(code);
   } catch {

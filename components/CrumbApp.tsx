@@ -468,7 +468,7 @@ export function CrumbApp({ store, geminiKey, renderSettings, reloadToken, viewOn
         onEdit={() => go(`edit-${current.id}`)}
         onDelete={() => remove(current)}
         onFavourite={() => toggleFavourite(current)}
-        onAddScreenshots={() => fillFrom(current)}
+        onAddScreenshots={() => (isYouTube(current.sourceShortcode) ? fillFrom(current) : setAdd({ open: true, fill: current, shared: null }))}
         fillJob={jobs.find((j) => j.fillId === current.id) ?? null}
         hasKey={Boolean(geminiKey)}
         onShare={viewOnly ? undefined : () => shareRecipe(current)}
